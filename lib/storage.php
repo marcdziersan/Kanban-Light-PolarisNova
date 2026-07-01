@@ -1380,6 +1380,86 @@ function storage_save_db(PDO $pdo, array $data): void
         $pdo->commit();
     }
 
+    // FK-Schutz vor dem Vollspeichern: Die Anwendung schreibt den kompletten
+    // Array-Datenstand neu in MySQL. Deshalb müssen gelöschte Aufgaben vorher
+    // auch aus abhängigen Arrays entfernt oder bei optionalen Verweisen auf NULL
+    // gesetzt werden. Sonst entstehen FK-Fehler bei events/history.
+    $existingTaskIds = [];
+    foreach ($data['tasks'] ?? [] as $task) {
+        $taskId = (int)($task['id'] ?? 0);
+        if ($taskId > 0) {
+            $existingTaskIds[$taskId] = true;
+        }
+    }
+
+    $existingUserIds = [];
+    foreach ($data['users'] ?? [] as $user) {
+        $userId = (int)($user['id'] ?? 0);
+        if ($userId > 0) {
+            $existingUserIds[$userId] = true;
+        }
+    }
+
+    $data['comments'] = array_values(array_filter($data['comments'] ?? [], static function ($comment) use ($existingTaskIds, $existingUserIds): bool {
+        $taskId = (int)($comment['task_id'] ?? 0);
+        $userId = (int)($comment['user_id'] ?? 0);
+        return isset($existingTaskIds[$taskId], $existingUserIds[$userId]);
+    }));
+
+    $data['time_entries'] = array_values(array_filter($data['time_entries'] ?? [], static function ($entry) use ($existingTaskIds, $existingUserIds): bool {
+        $taskId = (int)($entry['task_id'] ?? 0);
+        $userId = (int)($entry['user_id'] ?? 0);
+        return isset($existingTaskIds[$taskId], $existingUserIds[$userId]);
+    }));
+
+    foreach ($data['tasks'] ?? [] as &$task) {
+        foreach (['assigned_to', 'locked_by'] as $field) {
+            $value = $task[$field] ?? null;
+            if ($value === null || $value === '' || (int)$value <= 0 || !isset($existingUserIds[(int)$value])) {
+                $task[$field] = null;
+            } else {
+                $task[$field] = (int)$value;
+            }
+        }
+    }
+    unset($task);
+
+    foreach ($data['events'] ?? [] as &$event) {
+        $taskId = $event['task_id'] ?? null;
+        if ($taskId === null || $taskId === '' || (int)$taskId <= 0 || !isset($existingTaskIds[(int)$taskId])) {
+            $event['task_id'] = null;
+        } else {
+            $event['task_id'] = (int)$taskId;
+        }
+
+        $userId = $event['user_id'] ?? null;
+        if ($userId === null || $userId === '' || (int)$userId <= 0 || !isset($existingUserIds[(int)$userId])) {
+            $event['user_id'] = null;
+        } else {
+            $event['user_id'] = (int)$userId;
+        }
+    }
+    unset($event);
+
+    $cleanHistory = [];
+    foreach ($data['history'] ?? [] as $entry) {
+        $taskId = (int)($entry['task_id'] ?? 0);
+        if (!isset($existingTaskIds[$taskId])) {
+            continue;
+        }
+
+        $entry['task_id'] = $taskId;
+        $userId = $entry['user_id'] ?? null;
+        if ($userId === null || $userId === '' || (int)$userId <= 0 || !isset($existingUserIds[(int)$userId])) {
+            $entry['user_id'] = null;
+        } else {
+            $entry['user_id'] = (int)$userId;
+        }
+
+        $cleanHistory[] = $entry;
+    }
+    $data['history'] = $cleanHistory;
+
     $pdo->beginTransaction();
 
     try {
@@ -1503,14 +1583,33 @@ function storage_save_db(PDO $pdo, array $data): void
         $stmt = $pdo->prepare('INSERT INTO events (id, task_id, user_id, type, message, created_at)
             VALUES (:id, :task_id, :user_id, :type, :message, :created_at)');
         foreach ($data['events'] ?? [] as $e) {
-            $stmt->execute([
-                ':id' => (int)$e['id'],
-                ':task_id' => $e['task_id'] ?? null,
-                ':user_id' => $e['user_id'] ?? null,
-                ':type' => $e['type'] ?? '',
-                ':message' => $e['message'] ?? null,
-                ':created_at' => $e['created_at'] ?? null,
-            ]);
+            $stmt->bindValue(':id', (int)$e['id'], PDO::PARAM_INT);
+
+            if (($e['task_id'] ?? null) === null) {
+                $stmt->bindValue(':task_id', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':task_id', (int)$e['task_id'], PDO::PARAM_INT);
+            }
+
+            if (($e['user_id'] ?? null) === null) {
+                $stmt->bindValue(':user_id', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':user_id', (int)$e['user_id'], PDO::PARAM_INT);
+            }
+
+            $stmt->bindValue(':type', (string)($e['type'] ?? ''), PDO::PARAM_STR);
+            if (($e['message'] ?? null) === null) {
+                $stmt->bindValue(':message', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':message', (string)$e['message'], PDO::PARAM_STR);
+            }
+            if (($e['created_at'] ?? null) === null) {
+                $stmt->bindValue(':created_at', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':created_at', (string)$e['created_at'], PDO::PARAM_STR);
+            }
+
+            $stmt->execute();
         }
 
         // Änderungsprotokoll speichern.

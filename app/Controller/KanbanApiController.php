@@ -473,8 +473,9 @@ final class KanbanApiController
             break;
     
         case 'delete_task':
-            // Löscht eine Aufgabe inklusive abhängiger Kommentare und Zeiteinträge.
-            // Erlaubt für globale Admins und Projektverantwortliche des jeweiligen Projekts.
+            // Löscht eine Aufgabe inklusive abhängiger Kommentare, Zeiteinträge,
+            // Events und Historieneinträge. Wichtig: Nach dem Löschen darf kein
+            // neuer Datensatz mehr per FK auf die entfernte task_id zeigen.
             $in = $this->body();
             $id = (int)($in['id'] ?? 0);
             $i = $this->idx($d['tasks'], $id);
@@ -489,13 +490,33 @@ final class KanbanApiController
                 $this->out(['ok' => false, 'error' => 'Nur Admins oder Projektverantwortliche dürfen Aufgaben löschen'], 403);
             }
     
-            $this->history_add($d, $id, $u['id'], 'task_deleted', null, $d['tasks'][$i]['title'] ?? null, null, 'Aufgabe gelöscht');
+            $deletedTitle = trim((string)($d['tasks'][$i]['title'] ?? ''));
+            $deletedLabel = $deletedTitle !== '' ? $deletedTitle : ('#' . $id);
+    
+            // Abhängige Kinddaten vor dem Vollspeichern entfernen. Die Anwendung
+            // speichert MySQL aus dem Array neu; alte Event-/History-Verweise auf
+            // gelöschte Aufgaben würden sonst FK-Fehler auslösen.
+            $d['comments'] = array_values(array_filter($d['comments'] ?? [], fn($c) => (int)($c['task_id'] ?? 0) !== $id));
+            $d['time_entries'] = array_values(array_filter($d['time_entries'] ?? [], fn($t) => (int)($t['task_id'] ?? 0) !== $id));
+            $d['events'] = array_values(array_filter($d['events'] ?? [], fn($e) => (int)($e['task_id'] ?? 0) !== $id));
+            $d['history'] = array_values(array_filter($d['history'] ?? [], fn($h) => (int)($h['task_id'] ?? 0) !== $id));
+    
             array_splice($d['tasks'], $i, 1);
     
-            $d['comments'] = array_values(array_filter($d['comments'] ?? [], fn($c) => (int)$c['task_id'] !== $id));
-            $d['time_entries'] = array_values(array_filter($d['time_entries'] ?? [], fn($t) => (int)$t['task_id'] !== $id));
+            // Löschmeldung bleibt erhalten, zeigt aber nicht mehr per FK auf die
+            // entfernte Aufgabe. Details stehen in der Nachricht.
+            if (!isset($d['events']) || !is_array($d['events'])) {
+                $d['events'] = [];
+            }
+            $d['events'][] = [
+                'id' => $this->nid($d['events']),
+                'task_id' => null,
+                'user_id' => (int)$u['id'],
+                'type' => 'task_deleted',
+                'message' => 'Aufgabe gelöscht: ' . $deletedLabel . ' (#' . $id . ')',
+                'created_at' => $this->now(),
+            ];
     
-            $this->event($d, $id, $u['id'], 'task_deleted', 'Aufgabe gelöscht');
             $this->save($d);
             $this->out(['ok' => true]);
             break;

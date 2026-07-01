@@ -57,9 +57,11 @@ trait KanbanAuditTrait
      */
     private function event(&$d, $tid, $uid, $type, $msg)
     {
+        $taskId = ($tid === null || $tid === '' || (int)$tid <= 0) ? null : (int)$tid;
+
         $d['events'][] = [
             'id' => $this->nid($d['events'] ?? []),
-            'task_id' => (int)$tid,
+            'task_id' => $taskId,
             'user_id' => (int)$uid,
             'type' => $type,
             'message' => $msg,
