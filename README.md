@@ -390,6 +390,13 @@ Pull Requests, Forks, Issues oder Codevorschläge begründen keine Nutzungserlau
 
 ---
 
+### Bilder
+
+<img src="Screenshot 2026-07-01 164259.png">
+<img src="Screenshot 2026-07-01 164412.png">
+<img src="Screenshot 2026-07-01 164428.png">
+---
+
 ## Lizenz
 
 PolarisNova steht unter einer proprietären Lizenz mit vollständigem Rechtevorbehalt.
