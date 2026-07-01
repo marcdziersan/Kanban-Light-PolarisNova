@@ -1,0 +1,658 @@
+:root{--bg:#f4f6f8;--panel:#fff;--text:#1f2937;--muted:#6b7280;--line:#dde3ea;--accent:#2563eb;--danger:#dc2626;--shadow:0 12px 30px rgba(15,23,42,.08)}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px}a{color:inherit}.topbar{min-height:58px;background:#111827;color:white;display:flex;align-items:center;justify-content:space-between;padding:10px 18px;gap:16px;position:sticky;top:0;z-index:10}.topbar strong{font-size:16px}.muted{color:var(--muted);font-size:12px;margin-left:6px}.topbar .muted{color:#9ca3af}nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}button,.ghost{border:0;border-radius:10px;background:var(--accent);color:white;padding:9px 12px;font-weight:700;cursor:pointer;text-decoration:none;font-size:13px}.ghost{background:#374151}.danger{background:var(--danger)!important}button:hover,.ghost:hover{filter:brightness(.95)}.layout{display:grid;grid-template-columns:250px 1fr;gap:14px;padding:14px}.sidebar{display:flex;flex-direction:column;gap:12px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow)}.panel h2{margin:0 0 10px;font-size:15px}.panel p{margin:6px 0}.small{font-size:12px}input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:white;color:var(--text);font:inherit}label{display:block;margin:10px 0 8px;font-weight:700;font-size:13px}label input,label select,label textarea{margin-top:5px;font-weight:400}.board{display:grid;grid-template-columns:repeat(4,minmax(210px,1fr));gap:12px;align-items:start}.column{background:#e9eef5;border:1px solid var(--line);border-radius:18px;padding:10px;min-height:72vh}.column h2{display:flex;align-items:center;justify-content:space-between;margin:2px 4px 10px;font-size:15px}.count{background:white;border:1px solid var(--line);padding:3px 7px;border-radius:999px;color:var(--muted);font-size:12px}.dropzone{min-height:65vh;display:flex;flex-direction:column;gap:9px}.task{background:white;border:1px solid var(--line);border-radius:14px;padding:11px;box-shadow:0 6px 16px rgba(15,23,42,.07);cursor:grab}.task:active{cursor:grabbing}.task.dragging{opacity:.45}.task h3{font-size:14px;margin:0 0 7px}.task p{margin:0 0 9px;color:var(--muted);font-size:12px;line-height:1.35}.meta{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:11px;border-radius:999px;padding:3px 7px;background:#eef2ff;color:#3730a3}.pill.high{background:#fee2e2;color:#991b1b}.pill.critical{background:#111827;color:white}.pill.medium{background:#fef3c7;color:#92400e}.pill.low{background:#dcfce7;color:#166534}.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:flex-start;justify-content:center;padding:6vh 14px;z-index:50;overflow:auto}.modal.open{display:flex}.modal-card{background:white;border-radius:18px;padding:18px;width:min(560px,100%);box-shadow:0 25px 80px rgba(0,0,0,.25);position:relative}.modal-card.wide{width:min(880px,100%)}.x{position:absolute;right:12px;top:10px;background:#e5e7eb;color:#111827;border-radius:50%;width:32px;height:32px;padding:0}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:flex;gap:8px;margin-top:12px}.inline{display:flex;gap:8px;align-items:center}.inline input{flex:1}.comment,.time{border-top:1px solid var(--line);padding:8px 0;font-size:13px}.comment small,.time small{color:var(--muted)}.alert{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:10px;margin:10px 0}.login-page{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#111827,#334155)}.login-card{width:min(380px,92vw);background:white;border-radius:22px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.35)}.login-card h1{margin:0}.login-card p{color:var(--muted)}.login-card small{display:block;color:var(--muted);margin-top:12px}.report-row{display:grid;grid-template-columns:1fr auto;gap:10px;border-bottom:1px solid var(--line);padding:10px 0}@media(max-width:950px){.layout{grid-template-columns:1fr}.board{grid-template-columns:1fr}.column{min-height:auto}.dropzone{min-height:120px}.topbar{height:auto;padding:12px;align-items:flex-start;flex-direction:column}.grid2{grid-template-columns:1fr}}
+
+
+/* -------------------------------------------------------
+   Kompaktere Modals / reduzierte Randabstände
+   ------------------------------------------------------- */
+.modal{
+  padding:3vh 10px;
+  align-items:flex-start;
+}
+
+.modal-card{
+  width:min(500px,96vw);
+  padding:13px 14px 14px;
+  border-radius:14px;
+}
+
+.modal-card.wide{
+  width:min(760px,96vw);
+}
+
+.modal-card h2{
+  margin:0 0 8px;
+  font-size:18px;
+  line-height:1.15;
+}
+
+.modal-card h3{
+  margin:10px 0 6px;
+  font-size:14px;
+}
+
+.modal-card label{
+  margin:6px 0 5px;
+  font-size:12px;
+}
+
+.modal-card input,
+.modal-card select,
+.modal-card textarea{
+  padding:7px 8px;
+  border-radius:8px;
+  font-size:13px;
+}
+
+.modal-card textarea{
+  min-height:72px;
+  resize:vertical;
+}
+
+.modal-card .grid2{
+  gap:7px;
+}
+
+.modal-card .actions{
+  margin-top:8px;
+  gap:6px;
+}
+
+.modal-card button{
+  padding:7px 10px;
+  border-radius:8px;
+  font-size:12px;
+}
+
+.modal-card .x{
+  right:8px;
+  top:8px;
+  width:26px;
+  height:26px;
+  font-size:16px;
+}
+
+#commentBox,
+#timeBox{
+  margin-top:8px;
+  padding-top:6px;
+  border-top:1px solid var(--line);
+}
+
+.comment,
+.time{
+  padding:5px 0;
+  font-size:12px;
+}
+
+.comment small,
+.time small{
+  font-size:11px;
+}
+
+.inline{
+  gap:6px;
+}
+
+#userList{
+  max-height:220px;
+  overflow:auto;
+  margin-top:8px;
+}
+
+#reports .report-row{
+  padding:7px 0;
+  font-size:13px;
+}
+
+@media(max-width:700px){
+  .modal{
+    padding:8px;
+  }
+  .modal-card{
+    width:100%;
+    max-height:96vh;
+    overflow:auto;
+    padding:12px;
+  }
+  .modal-card .grid2{
+    grid-template-columns:1fr;
+  }
+}
+
+
+/* Aufgaben-Sperre / Bearbeitungsmarker */
+.lock-status{
+  margin:4px 0 8px;
+  padding:7px 9px;
+  border-radius:9px;
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  color:#9a3412;
+  font-size:12px;
+  font-weight:700;
+}
+.lock-status.locked-me{
+  background:#ecfdf5;
+  border-color:#a7f3d0;
+  color:#047857;
+}
+.lock-status.locked-other{
+  background:#fef2f2;
+  border-color:#fecaca;
+  color:#991b1b;
+}
+.lock-btn{
+  background:#0f766e!important;
+}
+.pill.locked{
+  background:#fef2f2;
+  color:#991b1b;
+}
+.task:has(.pill.locked){
+  border-color:#fecaca;
+}
+
+/* Async task refresh: alle 5 Sekunden werden nur Aufgaben/Marker aktualisiert. */
+
+
+/* Benutzerverwaltung / Sperrstatus */
+.user-actions{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+  margin-top:6px;
+}
+.user-actions button{
+  padding:5px 8px;
+  font-size:11px;
+  border-radius:7px;
+}
+.oktxt{color:#047857;font-weight:700}
+.badtxt{color:#b91c1c;font-weight:700}
+
+/* Login-Sperrhinweis als Modal */
+.login-modal-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.58);
+  display:grid;
+  place-items:center;
+  z-index:999;
+  padding:18px;
+}
+.login-modal{
+  width:min(380px,94vw);
+  background:#fff;
+  border-radius:18px;
+  padding:18px;
+  box-shadow:0 30px 90px rgba(0,0,0,.32);
+}
+.login-modal h2{
+  margin:0 0 8px;
+}
+.login-modal p{
+  color:#374151;
+  line-height:1.45;
+}
+.login-modal button{
+  margin-top:8px;
+}
+
+
+/* Stichtag-/Fälligkeitsfarben */
+.task.due-yellow{
+  background:#fff7cc;
+  border-color:#facc15;
+}
+.task.due-red{
+  background:#fee2e2;
+  border-color:#ef4444;
+}
+.task.overdue{
+  background:#ef4444;
+  border:3px solid #111827;
+  color:#111827;
+}
+.task.overdue p{
+  color:#111827;
+}
+.task.overdue .pill{
+  background:#111827;
+  color:#fff;
+}
+.pill.due-pill{
+  background:#e0f2fe;
+  color:#075985;
+}
+.task.due-yellow .due-pill{
+  background:#fef3c7;
+  color:#92400e;
+}
+.task.due-red .due-pill{
+  background:#fecaca;
+  color:#991b1b;
+}
+.task.overdue .due-pill{
+  background:#111827;
+  color:#fff;
+}
+
+.modal-card input[type="datetime-local"]{
+  font-family:inherit;
+}
+
+
+/* Historie / Änderungsprotokoll */
+#historyBox{
+  margin-top:8px;
+  padding-top:6px;
+  border-top:1px solid var(--line);
+}
+#historyList{
+  max-height:180px;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#f9fafb;
+  padding:6px 8px;
+}
+.history-entry{
+  padding:6px 0;
+  border-bottom:1px solid var(--line);
+  font-size:12px;
+}
+.history-entry:last-child{
+  border-bottom:0;
+}
+.history-entry b{
+  display:inline-block;
+  margin-right:5px;
+}
+.history-entry span{
+  color:#374151;
+}
+.history-entry small{
+  display:block;
+  color:#6b7280;
+  margin-top:2px;
+}
+
+#globalHistoryList{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#f9fafb;padding:6px 8px;margin-top:6px}
+
+/* -------------------------------------------------------
+   Projekt-/Boardübersicht nach dem Login
+   ------------------------------------------------------- */
+.project-overview{
+  padding:18px;
+}
+.project-headline{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:16px;
+}
+.project-headline h1{
+  margin:0 0 6px;
+  font-size:24px;
+}
+.project-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:14px;
+}
+.project-card{
+  background:white;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:15px;
+  box-shadow:var(--shadow);
+  cursor:pointer;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.project-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 16px 42px rgba(15,23,42,.13);
+  border-color:#bfdbfe;
+}
+.project-card h2{
+  margin:10px 0 8px;
+  font-size:18px;
+}
+.project-card p{
+  color:var(--muted);
+  line-height:1.45;
+  min-height:42px;
+}
+.project-card-top,
+.project-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+.project-meta{
+  flex-direction:column;
+  margin:10px 0;
+  font-size:13px;
+  color:#374151;
+}
+.project-actions{
+  justify-content:flex-start;
+}
+.empty-state{
+  background:white;
+  border:1px dashed var(--line);
+  border-radius:18px;
+  padding:24px;
+  color:var(--muted);
+}
+.member-box{
+  margin-top:8px;
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f9fafb;
+}
+.member-box h3{
+  margin-top:0;
+}
+.check-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:6px 0;
+  font-weight:600;
+}
+.check-row input{
+  width:auto;
+  margin:0;
+}
+.readonly-task{
+  cursor:pointer;
+  opacity:.86;
+}
+.readonly-pill{
+  background:#e5e7eb;
+  color:#374151;
+}
+
+@media(max-width:700px){
+  .project-overview{
+    padding:12px;
+  }
+  .project-headline{
+    flex-direction:column;
+  }
+  .project-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* -------------------------------------------------------
+   Scrollbare Kanban-Spalten
+   -------------------------------------------------------
+   Lange Spalten sollen das Board nicht endlos nach unten ziehen.
+   Die Spalte bleibt auf Bildschirmhöhe begrenzt, nur die Aufgabenliste
+   innerhalb der Spalte wird scrollbar.
+*/
+@media(min-width:951px){
+  .board{
+    align-items:start;
+  }
+
+  .column{
+    height:calc(100vh - 96px);
+    max-height:calc(100vh - 96px);
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .column h2{
+    flex:0 0 auto;
+  }
+
+  .dropzone{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-right:4px;
+    scroll-behavior:smooth;
+  }
+
+  .dropzone::-webkit-scrollbar{
+    width:8px;
+  }
+
+  .dropzone::-webkit-scrollbar-thumb{
+    background:#cbd5e1;
+    border-radius:999px;
+  }
+
+  .dropzone::-webkit-scrollbar-track{
+    background:transparent;
+  }
+}
+
+@media(max-width:950px){
+  .column{
+    max-height:70vh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .dropzone{
+    flex:1 1 auto;
+    min-height:140px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-right:4px;
+  }
+}
+
+/* -------------------------------------------------------
+   JSON Export / Import
+   ------------------------------------------------------- */
+.sync-box{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#f8fafc;
+  padding:14px;
+  margin:12px 0;
+}
+.sync-box h3{
+  margin-top:0;
+}
+.danger-zone{
+  border-color:#fecaca;
+  background:#fff7f7;
+}
+.sync-result{
+  white-space:pre-wrap;
+  background:#0f172a;
+  color:#e5e7eb;
+  border-radius:12px;
+  padding:12px;
+  max-height:240px;
+  overflow:auto;
+  font-size:13px;
+}
+
+/* -------------------------------------------------------
+   JSON nach MySQL Restore
+   ------------------------------------------------------- */
+.mysql-restore-zone{
+  border-color:#bfdbfe;
+  background:#eff6ff;
+}
+.checkline{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin:10px 0;
+  font-weight:600;
+}
+.checkline input{
+  width:auto;
+  margin-top:3px;
+}
+button:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+
+/* -------------------------------------------------------
+   Projektübersicht: linke Info-/Filterspalte, rechte Karten
+   ------------------------------------------------------- */
+.no-margin-left{
+  margin-left:0!important;
+}
+.project-overview{
+  display:grid;
+  grid-template-columns:250px 1fr;
+  gap:14px;
+  align-items:start;
+  padding:14px;
+}
+.overview-sidebar{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  position:sticky;
+  top:72px;
+}
+.project-main{
+  min-width:0;
+}
+.project-main .project-headline{
+  background:transparent;
+  margin-bottom:16px;
+}
+.project-grid{
+  grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+}
+.version-panel{
+  border-color:#bfdbfe;
+  background:linear-gradient(180deg,#ffffff 0%,#eff6ff 100%);
+}
+.version-panel .small{
+  line-height:1.45;
+}
+#projectSearch,
+#projectMemberFilter,
+#projectResponsibleFilter{
+  margin-bottom:7px;
+}
+
+@media(max-width:950px){
+  .project-overview{
+    grid-template-columns:1fr;
+    padding:12px;
+  }
+  .overview-sidebar{
+    position:static;
+  }
+  .project-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+
+/* -------------------------------------------------------
+   Bugfix: echte Ansichtsumschaltung Übersicht <-> Board
+   -------------------------------------------------------
+   Eigene display-Regeln wie .layout{display:grid} und
+   .project-overview{display:grid} können das HTML-Attribut
+   hidden sonst optisch überstimmen. Diese Regel erzwingt,
+   dass ausgeblendete Bereiche wirklich nicht angezeigt werden.
+*/
+[hidden],
+.is-hidden{
+  display:none!important;
+}
+
+/* -------------------------------------------------------
+   Zeiterfassung / Abrechnungsreport v1.8.4
+   ------------------------------------------------------- */
+.time b{
+  display:inline-block;
+  margin-right:4px;
+}
+.report-total{
+  margin:8px 0 12px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#eef2ff;
+}
+.report-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin:10px 0 14px;
+}
+.report-grid section,
+.report-list{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f9fafb;
+  padding:10px;
+}
+.report-grid h4{
+  margin:0 0 6px;
+  font-size:13px;
+}
+.report-list.compact{
+  max-height:260px;
+  overflow:auto;
+}
+#reports .report-row:last-child{
+  border-bottom:0;
+}
+@media(max-width:800px){
+  .report-grid{
+    grid-template-columns:1fr;
+  }
+}
+.time.running-time{
+  background:#ecfeff;
+  border-left:3px solid #06b6d4;
+  padding-left:8px;
+}
+#timeBox button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+
+/* Sichtbare Demo-Zugangsdaten für Weitergabe-/Testinstallationen */
+.demo-login-box{
+  margin-top:14px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#f8fafc;
+  color:var(--text);
+}
+.demo-login-box strong{
+  display:block;
+  margin-bottom:6px;
+  font-size:13px;
+}
+.demo-login-box p{
+  margin:4px 0;
+  color:var(--muted);
+  font-size:13px;
+}
+.demo-login-box code{
+  display:inline-block;
+  padding:2px 6px;
+  border-radius:7px;
+  background:#e5e7eb;
+  color:#111827;
+  font-weight:700;
+}

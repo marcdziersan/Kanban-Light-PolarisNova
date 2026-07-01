@@ -1,0 +1,13 @@
+{
+    "meta": {
+        "app": "PolarisNova Kundenverwaltung",
+        "version": "Kundenverwaltung v0.2.1",
+        "last_update": "01.07.2026",
+        "storage": "MySQL/PDO mit JSON-Fallback",
+        "storage_mode": "clean_distribution",
+        "table_prefix": "kv_",
+        "relation": "liest PolarisNova-Projektinformationen, schreibt aber nicht ins Kanban"
+    },
+    "customers": [],
+    "events": []
+}

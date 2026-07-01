@@ -1,0 +1,42 @@
+{
+    "meta": {
+        "app": "Kanban Light PolarisNova",
+        "storage": "MySQL PDO",
+        "version": "1.8.0",
+        "version_label": "Weiterentwicklung v1.8.4",
+        "last_update": "24.06.2026",
+        "release_notes": "Projekt-\/Boardverwaltung, Projektverantwortliche, JSON-Fallback, JSON-nach-MySQL-Wiederherstellung, Auto-Sortierung, scrollbare Spalten, UI-State-Fix und erweiterte Zeiterfassungs-\/Abrechnungsreports.",
+        "json_backup": "enabled",
+        "storage_mode": "mysql_pdo",
+        "json_restore_pending": false
+    },
+    "users": [
+        {
+            "id": 1,
+            "username": "admin",
+            "email": "admin@example.local",
+            "password_hash": "$2y$10$NjLbet8SaYZrFBjNnL1iQOSHDU8AT7soJRedklAthx8HdSfPBXQoi",
+            "role": "admin",
+            "is_active": true,
+            "created_at": "2026-07-01 00:00:00"
+        },
+        {
+            "id": 2,
+            "username": "demo",
+            "email": "demo@example.local",
+            "password_hash": "$2y$10$XLt0moOZTbXyo7oAdyosvuwm8XrP6jhGnfYCALN.wP15M5NWMu1LG",
+            "role": "user",
+            "is_active": true,
+            "created_at": "2026-07-01 00:00:00"
+        }
+    ],
+    "projects": [],
+    "boards": [],
+    "project_members": [],
+    "columns": [],
+    "tasks": [],
+    "comments": [],
+    "time_entries": [],
+    "events": [],
+    "history": []
+}
