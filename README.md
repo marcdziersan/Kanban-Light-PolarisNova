@@ -1107,13 +1107,9 @@ Pull Requests, Forks, Issues oder Codevorschläge begründen keine Nutzungserlau
 
 ## Screenshots
 
-Beispielhafte Einbindung von Screenshots im Repository:
-
-```html
 <img src="Screenshot 2026-07-01 164259.png" alt="PolarisNova Projektübersicht">
 <img src="Screenshot 2026-07-01 164412.png" alt="PolarisNova Kanban-Board">
 <img src="Screenshot 2026-07-01 164428.png" alt="PolarisNova Kundenverwaltung">
-```
 
 ---
 
