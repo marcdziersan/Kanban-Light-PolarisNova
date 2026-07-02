@@ -102,6 +102,9 @@ if (!$user) {
 
         <button class="ghost" type="button" id="openReports" hidden>Reports</button>
         <button class="ghost" type="button" id="openMonthlySheet">Monatszettel</button>
+        <a class="ghost" href="accounting.php">Rechnungen/EÜR</a>
+        <a class="ghost" href="pm.php">Nachrichten</a>
+        <a class="ghost" href="tickets.php">Tickets</a>
 
         <a class="ghost" href="customers.php">Kunden</a>
 
@@ -146,10 +149,10 @@ if (!$user) {
         <section class="panel version-panel">
             <h2>Systemstand</h2>
 	    <img src="icon.png" style="width:100%;">
-            <p><b>Version:</b> <span id="appVersion">Weiterentwicklung v1.8.4</span></p>
+            <p><b>Version:</b> <span id="appVersion">Weiterentwicklung v2.0.0</span></p>
             <p><b>Letztes Update:</b> <span id="appLastUpdate">24.06.2026</span></p>
             <p class="small muted no-margin-left" id="appVersionNote">
-                UI-State-Fix und erweiterte Zeiterfassungs-/Abrechnungsreports.
+                PM-System mit privaten Nachrichten, Projektchat, Gesamtchat und Admin-Pinnwand.
             </p>
         </section>
     </aside>
@@ -538,9 +541,9 @@ if (!$user) {
         JSON_UNESCAPED_UNICODE
     ) ?>;
     window.APP_STORAGE_MODE_LABEL = <?= json_encode(storage_mode_label(), JSON_UNESCAPED_UNICODE) ?>;
-    window.APP_VERSION_LABEL = 'Weiterentwicklung v1.8.4';
+    window.APP_VERSION_LABEL = 'Weiterentwicklung v1.9.0';
     window.APP_LAST_UPDATE = '24.06.2026';
-    window.APP_VERSION_NOTE = 'Projekt-/Boardverwaltung, Projektverantwortliche, JSON-Fallback, JSON-nach-MySQL-Wiederherstellung, Auto-Sortierung, scrollbare Spalten, UI-State-Fix und erweiterte Zeiterfassungs-/Abrechnungsreports.';
+    window.APP_VERSION_NOTE = 'Monatszettel, Rechnungsentwurf aus Zeiten und vorbereitende EÜR-Auswertungen.';
 </script>
 
 <script src="assets/js/app.js"></script>

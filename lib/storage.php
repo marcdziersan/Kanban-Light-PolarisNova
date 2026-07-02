@@ -82,10 +82,10 @@ function storage_default_data(): array
         'meta' => [
             'app' => 'Kanban Light PolarisNova',
             'storage' => 'MySQL PDO + JSON Backup/Offline',
-            'version' => '1.8.0',
-            'version_label' => 'Weiterentwicklung v1.8.4',
+            'version' => '1.9.0',
+            'version_label' => 'Weiterentwicklung v2.0.0',
             'last_update' => '24.06.2026',
-            'release_notes' => 'Projekt-/Boardverwaltung, Projektverantwortliche, JSON-Fallback, JSON-nach-MySQL-Wiederherstellung, Auto-Sortierung, scrollbare Spalten, UI-State-Fix und erweiterte Zeiterfassungs-/Abrechnungsreports.',
+            'release_notes' => 'Monatszettel, Rechnungen/EÜR, PM-System und internes Ticketsystem mit Admin-Kanban ergänzt.',
         ],
         'users' => [],
         'projects' => [],
@@ -97,6 +97,15 @@ function storage_default_data(): array
         'time_entries' => [],
         'events' => [],
         'history' => [],
+        'invoices' => [],
+        'invoice_items' => [],
+        'eur_entries' => [],
+        'pm_messages' => [],
+        'pm_message_reads' => [],
+        'pm_pinboard' => [],
+        'pm_pinboard_reads' => [],
+        'support_tickets' => [],
+        'support_ticket_comments' => [],
     ];
 }
 
@@ -250,7 +259,7 @@ function storage_validate_app_data(array $data): array
 {
     $data = storage_prepare_app_data($data);
     $errors = [];
-    $tables = ['users', 'projects', 'boards', 'project_members', 'columns', 'tasks', 'comments', 'time_entries', 'events', 'history'];
+    $tables = ['users', 'projects', 'boards', 'project_members', 'columns', 'tasks', 'comments', 'time_entries', 'events', 'history', 'invoices', 'invoice_items', 'eur_entries', 'pm_messages', 'pm_message_reads', 'pm_pinboard', 'pm_pinboard_reads', 'support_tickets', 'support_ticket_comments'];
 
     foreach ($tables as $table) {
         if (!isset($data[$table]) || !is_array($data[$table])) {
@@ -269,6 +278,10 @@ function storage_validate_app_data(array $data): array
     storage_validate_ids($data['time_entries'], 'time_entries', $errors);
     storage_validate_ids($data['events'], 'events', $errors);
     storage_validate_ids($data['history'], 'history', $errors);
+    storage_validate_ids($data['pm_messages'], 'pm_messages', $errors);
+    storage_validate_ids($data['pm_message_reads'], 'pm_message_reads', $errors);
+    storage_validate_ids($data['pm_pinboard'], 'pm_pinboard', $errors);
+    storage_validate_ids($data['pm_pinboard_reads'], 'pm_pinboard_reads', $errors);
 
     $userSet = array_flip($userIds);
     $projectSet = array_flip($projectIds);
@@ -368,6 +381,42 @@ function storage_validate_app_data(array $data): array
         $userId = $row['user_id'] ?? null;
         if ($userId !== null && $userId !== '' && !isset($userSet[(int)$userId])) {
             $errors[] = "Historie #" . (int)($row['id'] ?? 0) . " verweist auf einen unbekannten Benutzer.";
+        }
+    }
+
+
+    foreach ($data['pm_messages'] as $row) {
+        $senderId = (int)($row['sender_id'] ?? 0);
+        if (!isset($userSet[$senderId])) {
+            $errors[] = "PM-Nachricht #" . (int)($row['id'] ?? 0) . " verweist auf einen unbekannten Absender.";
+        }
+
+        $recipientId = $row['recipient_id'] ?? null;
+        if ($recipientId !== null && $recipientId !== '' && !isset($userSet[(int)$recipientId])) {
+            $errors[] = "PM-Nachricht #" . (int)($row['id'] ?? 0) . " verweist auf einen unbekannten Empfänger.";
+        }
+
+        $projectId = $row['project_id'] ?? null;
+        if ($projectId !== null && $projectId !== '' && !isset($projectSet[(int)$projectId])) {
+            $errors[] = "PM-Nachricht #" . (int)($row['id'] ?? 0) . " verweist auf ein unbekanntes Projekt.";
+        }
+    }
+
+    foreach ($data['pm_message_reads'] as $row) {
+        if (!isset($userSet[(int)($row['user_id'] ?? 0)])) {
+            $errors[] = "PM-Lesestatus #" . (int)($row['id'] ?? 0) . " verweist auf einen unbekannten Benutzer.";
+        }
+    }
+
+    foreach ($data['pm_pinboard'] as $row) {
+        if (!isset($userSet[(int)($row['created_by'] ?? 0)])) {
+            $errors[] = "Pinnwand #" . (int)($row['id'] ?? 0) . " verweist auf einen unbekannten Admin.";
+        }
+    }
+
+    foreach ($data['pm_pinboard_reads'] as $row) {
+        if (!isset($userSet[(int)($row['user_id'] ?? 0)])) {
+            $errors[] = "Pinnwand-Lesestatus #" . (int)($row['id'] ?? 0) . " verweist auf einen unbekannten Benutzer.";
         }
     }
 
@@ -1067,6 +1116,198 @@ function storage_db_migrate(PDO $pdo): void
             // In teilinitialisierten Datenbanken kann der FK später erneut gesetzt werden.
         }
     }
+
+    // Rechnungs- und EÜR-Modul: bewusst nur lose Referenzen auf Kunden/Projekte/Aufgaben,
+    // weil die Kernanwendung beim Speichern Tabellen komplett neu schreibt. Snapshots
+    // verhindern, dass alte Rechnungen bei später gelöschten Aufgaben unbrauchbar werden.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `invoices` (
+        `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+        `number` varchar(80) NOT NULL,
+        `customer_id` int UNSIGNED DEFAULT NULL,
+        `customer_name` varchar(190) DEFAULT NULL,
+        `project_id` int UNSIGNED DEFAULT NULL,
+        `project_name` varchar(190) DEFAULT NULL,
+        `title` varchar(190) DEFAULT NULL,
+        `invoice_date` varchar(32) DEFAULT NULL,
+        `due_date` varchar(32) DEFAULT NULL,
+        `status` enum('draft','sent','paid','cancelled') NOT NULL DEFAULT 'draft',
+        `net_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+        `vat_rate` decimal(5,2) NOT NULL DEFAULT 19.00,
+        `vat_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+        `gross_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+        `paid_at` varchar(32) DEFAULT NULL,
+        `notes` text DEFAULT NULL,
+        `created_by` int UNSIGNED DEFAULT NULL,
+        `created_at` varchar(32) DEFAULT NULL,
+        `updated_at` varchar(32) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uniq_invoices_number` (`number`),
+        KEY `idx_invoices_customer` (`customer_id`),
+        KEY `idx_invoices_project` (`project_id`),
+        KEY `idx_invoices_status` (`status`),
+        KEY `idx_invoices_date` (`invoice_date`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `invoice_items` (
+        `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+        `invoice_id` int UNSIGNED NOT NULL,
+        `position` int NOT NULL DEFAULT 0,
+        `time_entry_id` int UNSIGNED DEFAULT NULL,
+        `task_id` int UNSIGNED DEFAULT NULL,
+        `task_title` varchar(190) DEFAULT NULL,
+        `user_id` int UNSIGNED DEFAULT NULL,
+        `user_name` varchar(190) DEFAULT NULL,
+        `project_id` int UNSIGNED DEFAULT NULL,
+        `project_name` varchar(190) DEFAULT NULL,
+        `work_date` varchar(32) DEFAULT NULL,
+        `description` text DEFAULT NULL,
+        `quantity_hours` decimal(10,2) NOT NULL DEFAULT 0.00,
+        `unit_price` decimal(10,2) NOT NULL DEFAULT 0.00,
+        `net_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+        PRIMARY KEY (`id`),
+        KEY `idx_invoice_items_invoice` (`invoice_id`),
+        KEY `idx_invoice_items_time` (`time_entry_id`),
+        KEY `idx_invoice_items_task` (`task_id`),
+        KEY `idx_invoice_items_user` (`user_id`),
+        CONSTRAINT `fk_invoice_items_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `eur_entries` (
+        `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+        `entry_date` varchar(32) DEFAULT NULL,
+        `type` enum('income','expense') NOT NULL DEFAULT 'expense',
+        `category` varchar(120) DEFAULT NULL,
+        `description` text DEFAULT NULL,
+        `user_id` int UNSIGNED DEFAULT NULL,
+        `user_name` varchar(190) DEFAULT NULL,
+        `invoice_id` int UNSIGNED DEFAULT NULL,
+        `amount_net` decimal(12,2) NOT NULL DEFAULT 0.00,
+        `vat_rate` decimal(5,2) NOT NULL DEFAULT 19.00,
+        `vat_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+        `amount_gross` decimal(12,2) NOT NULL DEFAULT 0.00,
+        `created_by` int UNSIGNED DEFAULT NULL,
+        `created_at` varchar(32) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `idx_eur_entries_date` (`entry_date`),
+        KEY `idx_eur_entries_type` (`type`),
+        KEY `idx_eur_entries_user` (`user_id`),
+        KEY `idx_eur_entries_invoice` (`invoice_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // PM-/Nachrichtenmodul: private Nachrichten, Projektchat, Gesamtchat und Admin-Pinnwand.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pm_messages` (
+        `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+        `type` enum('direct','project','company') NOT NULL DEFAULT 'direct',
+        `project_id` int UNSIGNED DEFAULT NULL,
+        `sender_id` int UNSIGNED NOT NULL,
+        `recipient_id` int UNSIGNED DEFAULT NULL,
+        `subject` varchar(160) DEFAULT NULL,
+        `content` text NOT NULL,
+        `created_at` varchar(32) DEFAULT NULL,
+        `updated_at` varchar(32) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `idx_pm_messages_type` (`type`),
+        KEY `idx_pm_messages_project` (`project_id`),
+        KEY `idx_pm_messages_sender` (`sender_id`),
+        KEY `idx_pm_messages_recipient` (`recipient_id`),
+        KEY `idx_pm_messages_created` (`created_at`),
+        CONSTRAINT `fk_pm_messages_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+        CONSTRAINT `fk_pm_messages_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT `fk_pm_messages_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pm_message_reads` (
+        `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+        `message_id` int UNSIGNED NOT NULL,
+        `user_id` int UNSIGNED NOT NULL,
+        `read_at` varchar(32) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_pm_message_read` (`message_id`, `user_id`),
+        KEY `idx_pm_message_reads_user` (`user_id`),
+        CONSTRAINT `fk_pm_reads_message` FOREIGN KEY (`message_id`) REFERENCES `pm_messages` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT `fk_pm_reads_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pm_pinboard` (
+        `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+        `title` varchar(160) NOT NULL,
+        `content` text NOT NULL,
+        `priority` enum('normal','important','urgent') NOT NULL DEFAULT 'normal',
+        `is_active` tinyint(1) NOT NULL DEFAULT 1,
+        `expires_at` varchar(32) DEFAULT NULL,
+        `created_by` int UNSIGNED NOT NULL,
+        `created_at` varchar(32) DEFAULT NULL,
+        `updated_at` varchar(32) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `idx_pm_pinboard_active` (`is_active`),
+        KEY `idx_pm_pinboard_priority` (`priority`),
+        KEY `idx_pm_pinboard_creator` (`created_by`),
+        CONSTRAINT `fk_pm_pinboard_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `pm_pinboard_reads` (
+        `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+        `pin_id` int UNSIGNED NOT NULL,
+        `user_id` int UNSIGNED NOT NULL,
+        `read_at` varchar(32) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_pm_pinboard_read` (`pin_id`, `user_id`),
+        KEY `idx_pm_pinboard_reads_user` (`user_id`),
+        CONSTRAINT `fk_pm_pin_reads_pin` FOREIGN KEY (`pin_id`) REFERENCES `pm_pinboard` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT `fk_pm_pin_reads_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+
+    // Internes Ticketsystem: Fehler/Verbesserungen melden, Admin-Kanban, Bearbeitungsrückmeldung.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `support_tickets` (
+        `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+        `ticket_number` varchar(40) NOT NULL,
+        `created_by` int UNSIGNED NOT NULL,
+        `assigned_admin_id` int UNSIGNED DEFAULT NULL,
+        `project_id` int UNSIGNED DEFAULT NULL,
+        `task_id` int UNSIGNED DEFAULT NULL,
+        `area` varchar(80) NOT NULL DEFAULT 'other',
+        `priority` enum('low','normal','high','critical') NOT NULL DEFAULT 'normal',
+        `status` enum('new','accepted','in_progress','waiting','done','confirmed','rejected') NOT NULL DEFAULT 'new',
+        `title` varchar(190) NOT NULL,
+        `expected_result` text DEFAULT NULL,
+        `actual_result` text DEFAULT NULL,
+        `steps` text DEFAULT NULL,
+        `admin_note` text DEFAULT NULL,
+        `created_at` varchar(32) DEFAULT NULL,
+        `updated_at` varchar(32) DEFAULT NULL,
+        `accepted_at` varchar(32) DEFAULT NULL,
+        `resolved_at` varchar(32) DEFAULT NULL,
+        `confirmed_at` varchar(32) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uniq_support_ticket_number` (`ticket_number`),
+        KEY `idx_support_tickets_creator` (`created_by`),
+        KEY `idx_support_tickets_admin` (`assigned_admin_id`),
+        KEY `idx_support_tickets_project` (`project_id`),
+        KEY `idx_support_tickets_task` (`task_id`),
+        KEY `idx_support_tickets_status` (`status`),
+        KEY `idx_support_tickets_area` (`area`),
+        KEY `idx_support_tickets_priority` (`priority`),
+        CONSTRAINT `fk_support_tickets_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT `fk_support_tickets_admin` FOREIGN KEY (`assigned_admin_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+        CONSTRAINT `fk_support_tickets_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+        CONSTRAINT `fk_support_tickets_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `support_ticket_comments` (
+        `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+        `ticket_id` int UNSIGNED NOT NULL,
+        `user_id` int UNSIGNED NOT NULL,
+        `visibility` enum('public','admin') NOT NULL DEFAULT 'public',
+        `content` text NOT NULL,
+        `created_at` varchar(32) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `idx_support_comments_ticket` (`ticket_id`),
+        KEY `idx_support_comments_user` (`user_id`),
+        CONSTRAINT `fk_support_comments_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT `fk_support_comments_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
 }
 
 /**
@@ -1358,6 +1599,99 @@ function storage_load_db(PDO $pdo): array
         $h['user_id'] = $h['user_id'] === null ? null : (int)$h['user_id'];
     }
 
+    $data['invoices'] = $pdo->query('SELECT id, number, customer_id, customer_name, project_id, project_name, title, invoice_date, due_date, status, net_amount, vat_rate, vat_amount, gross_amount, paid_at, notes, created_by, created_at, updated_at FROM invoices ORDER BY invoice_date DESC, id DESC')->fetchAll();
+    foreach ($data['invoices'] as &$inv) {
+        $inv['id'] = (int)$inv['id'];
+        $inv['customer_id'] = $inv['customer_id'] === null ? null : (int)$inv['customer_id'];
+        $inv['project_id'] = $inv['project_id'] === null ? null : (int)$inv['project_id'];
+        $inv['net_amount'] = (float)$inv['net_amount'];
+        $inv['vat_rate'] = (float)$inv['vat_rate'];
+        $inv['vat_amount'] = (float)$inv['vat_amount'];
+        $inv['gross_amount'] = (float)$inv['gross_amount'];
+        $inv['created_by'] = $inv['created_by'] === null ? null : (int)$inv['created_by'];
+    }
+    unset($inv);
+
+    $data['invoice_items'] = $pdo->query('SELECT id, invoice_id, position, time_entry_id, task_id, task_title, user_id, user_name, project_id, project_name, work_date, description, quantity_hours, unit_price, net_amount FROM invoice_items ORDER BY invoice_id, position, id')->fetchAll();
+    foreach ($data['invoice_items'] as &$item) {
+        $item['id'] = (int)$item['id'];
+        $item['invoice_id'] = (int)$item['invoice_id'];
+        $item['position'] = (int)$item['position'];
+        $item['time_entry_id'] = $item['time_entry_id'] === null ? null : (int)$item['time_entry_id'];
+        $item['task_id'] = $item['task_id'] === null ? null : (int)$item['task_id'];
+        $item['user_id'] = $item['user_id'] === null ? null : (int)$item['user_id'];
+        $item['project_id'] = $item['project_id'] === null ? null : (int)$item['project_id'];
+        $item['quantity_hours'] = (float)$item['quantity_hours'];
+        $item['unit_price'] = (float)$item['unit_price'];
+        $item['net_amount'] = (float)$item['net_amount'];
+    }
+    unset($item);
+
+    $data['eur_entries'] = $pdo->query('SELECT id, entry_date, type, category, description, user_id, user_name, invoice_id, amount_net, vat_rate, vat_amount, amount_gross, created_by, created_at FROM eur_entries ORDER BY entry_date DESC, id DESC')->fetchAll();
+    foreach ($data['eur_entries'] as &$entry) {
+        $entry['id'] = (int)$entry['id'];
+        $entry['user_id'] = $entry['user_id'] === null ? null : (int)$entry['user_id'];
+        $entry['invoice_id'] = $entry['invoice_id'] === null ? null : (int)$entry['invoice_id'];
+        $entry['amount_net'] = (float)$entry['amount_net'];
+        $entry['vat_rate'] = (float)$entry['vat_rate'];
+        $entry['vat_amount'] = (float)$entry['vat_amount'];
+        $entry['amount_gross'] = (float)$entry['amount_gross'];
+        $entry['created_by'] = $entry['created_by'] === null ? null : (int)$entry['created_by'];
+    }
+    unset($entry);
+
+    $data['pm_messages'] = $pdo->query('SELECT id, type, project_id, sender_id, recipient_id, subject, content, created_at, updated_at FROM pm_messages ORDER BY created_at DESC, id DESC')->fetchAll();
+    foreach ($data['pm_messages'] as &$message) {
+        $message['id'] = (int)$message['id'];
+        $message['project_id'] = $message['project_id'] === null ? null : (int)$message['project_id'];
+        $message['sender_id'] = (int)$message['sender_id'];
+        $message['recipient_id'] = $message['recipient_id'] === null ? null : (int)$message['recipient_id'];
+    }
+    unset($message);
+
+    $data['pm_message_reads'] = $pdo->query('SELECT id, message_id, user_id, read_at FROM pm_message_reads ORDER BY id')->fetchAll();
+    foreach ($data['pm_message_reads'] as &$read) {
+        $read['id'] = (int)$read['id'];
+        $read['message_id'] = (int)$read['message_id'];
+        $read['user_id'] = (int)$read['user_id'];
+    }
+    unset($read);
+
+    $data['pm_pinboard'] = $pdo->query('SELECT id, title, content, priority, is_active, expires_at, created_by, created_at, updated_at FROM pm_pinboard ORDER BY created_at DESC, id DESC')->fetchAll();
+    foreach ($data['pm_pinboard'] as &$pin) {
+        $pin['id'] = (int)$pin['id'];
+        $pin['is_active'] = (bool)$pin['is_active'];
+        $pin['created_by'] = (int)$pin['created_by'];
+    }
+    unset($pin);
+
+    $data['pm_pinboard_reads'] = $pdo->query('SELECT id, pin_id, user_id, read_at FROM pm_pinboard_reads ORDER BY id')->fetchAll();
+    foreach ($data['pm_pinboard_reads'] as &$read) {
+        $read['id'] = (int)$read['id'];
+        $read['pin_id'] = (int)$read['pin_id'];
+        $read['user_id'] = (int)$read['user_id'];
+    }
+    unset($read);
+
+
+    $data['support_tickets'] = $pdo->query('SELECT id, ticket_number, created_by, assigned_admin_id, project_id, task_id, area, priority, status, title, expected_result, actual_result, steps, admin_note, created_at, updated_at, accepted_at, resolved_at, confirmed_at FROM support_tickets ORDER BY id DESC')->fetchAll();
+    foreach ($data['support_tickets'] as &$ticket) {
+        $ticket['id'] = (int)$ticket['id'];
+        $ticket['created_by'] = (int)$ticket['created_by'];
+        $ticket['assigned_admin_id'] = $ticket['assigned_admin_id'] === null ? null : (int)$ticket['assigned_admin_id'];
+        $ticket['project_id'] = $ticket['project_id'] === null ? null : (int)$ticket['project_id'];
+        $ticket['task_id'] = $ticket['task_id'] === null ? null : (int)$ticket['task_id'];
+    }
+    unset($ticket);
+
+    $data['support_ticket_comments'] = $pdo->query('SELECT id, ticket_id, user_id, visibility, content, created_at FROM support_ticket_comments ORDER BY ticket_id, id')->fetchAll();
+    foreach ($data['support_ticket_comments'] as &$comment) {
+        $comment['id'] = (int)$comment['id'];
+        $comment['ticket_id'] = (int)$comment['ticket_id'];
+        $comment['user_id'] = (int)$comment['user_id'];
+    }
+    unset($comment);
+
     return $data;
 }
 
@@ -1397,6 +1731,14 @@ function storage_save_db(PDO $pdo, array $data): void
         $userId = (int)($user['id'] ?? 0);
         if ($userId > 0) {
             $existingUserIds[$userId] = true;
+        }
+    }
+
+    $existingProjectIds = [];
+    foreach ($data['projects'] ?? [] as $project) {
+        $projectId = (int)($project['id'] ?? 0);
+        if ($projectId > 0) {
+            $existingProjectIds[$projectId] = true;
         }
     }
 
@@ -1441,6 +1783,19 @@ function storage_save_db(PDO $pdo, array $data): void
     }
     unset($event);
 
+    $existingInvoiceIds = [];
+    foreach ($data['invoices'] ?? [] as $invoice) {
+        $invoiceId = (int)($invoice['id'] ?? 0);
+        if ($invoiceId > 0) {
+            $existingInvoiceIds[$invoiceId] = true;
+        }
+    }
+
+    $data['invoice_items'] = array_values(array_filter($data['invoice_items'] ?? [], static function ($item) use ($existingInvoiceIds): bool {
+        $invoiceId = (int)($item['invoice_id'] ?? 0);
+        return isset($existingInvoiceIds[$invoiceId]);
+    }));
+
     $cleanHistory = [];
     foreach ($data['history'] ?? [] as $entry) {
         $taskId = (int)($entry['task_id'] ?? 0);
@@ -1460,11 +1815,111 @@ function storage_save_db(PDO $pdo, array $data): void
     }
     $data['history'] = $cleanHistory;
 
+
+    $data['pm_messages'] = array_values(array_filter($data['pm_messages'] ?? [], static function ($message) use ($existingUserIds, $existingProjectIds): bool {
+        $senderId = (int)($message['sender_id'] ?? 0);
+        if (!isset($existingUserIds[$senderId])) {
+            return false;
+        }
+
+        $type = (string)($message['type'] ?? 'direct');
+        if (!in_array($type, ['direct', 'project', 'company'], true)) {
+            return false;
+        }
+
+        if ($type === 'direct') {
+            $recipientId = (int)($message['recipient_id'] ?? 0);
+            return isset($existingUserIds[$recipientId]);
+        }
+
+        if ($type === 'project') {
+            $projectId = (int)($message['project_id'] ?? 0);
+            return isset($existingProjectIds[$projectId]);
+        }
+
+        return true;
+    }));
+
+    $existingMessageIds = [];
+    foreach ($data['pm_messages'] ?? [] as $message) {
+        $messageId = (int)($message['id'] ?? 0);
+        if ($messageId > 0) {
+            $existingMessageIds[$messageId] = true;
+        }
+    }
+
+    $data['pm_message_reads'] = array_values(array_filter($data['pm_message_reads'] ?? [], static function ($read) use ($existingMessageIds, $existingUserIds): bool {
+        return isset($existingMessageIds[(int)($read['message_id'] ?? 0)], $existingUserIds[(int)($read['user_id'] ?? 0)]);
+    }));
+
+    $data['pm_pinboard'] = array_values(array_filter($data['pm_pinboard'] ?? [], static function ($pin) use ($existingUserIds): bool {
+        return isset($existingUserIds[(int)($pin['created_by'] ?? 0)]);
+    }));
+
+    $existingPinIds = [];
+    foreach ($data['pm_pinboard'] ?? [] as $pin) {
+        $pinId = (int)($pin['id'] ?? 0);
+        if ($pinId > 0) {
+            $existingPinIds[$pinId] = true;
+        }
+    }
+
+    $data['pm_pinboard_reads'] = array_values(array_filter($data['pm_pinboard_reads'] ?? [], static function ($read) use ($existingPinIds, $existingUserIds): bool {
+        return isset($existingPinIds[(int)($read['pin_id'] ?? 0)], $existingUserIds[(int)($read['user_id'] ?? 0)]);
+    }));
+
+
+    $data['support_tickets'] = array_values(array_filter($data['support_tickets'] ?? [], static function ($ticket) use ($existingUserIds, $existingProjectIds, $existingTaskIds): bool {
+        $creatorId = (int)($ticket['created_by'] ?? 0);
+        if (!isset($existingUserIds[$creatorId])) {
+            return false;
+        }
+        $projectId = $ticket['project_id'] ?? null;
+        if ($projectId !== null && $projectId !== '' && (int)$projectId > 0 && !isset($existingProjectIds[(int)$projectId])) {
+            return false;
+        }
+        $taskId = $ticket['task_id'] ?? null;
+        if ($taskId !== null && $taskId !== '' && (int)$taskId > 0 && !isset($existingTaskIds[(int)$taskId])) {
+            return false;
+        }
+        return true;
+    }));
+
+    foreach ($data['support_tickets'] as &$ticket) {
+        foreach (['assigned_admin_id', 'project_id', 'task_id'] as $field) {
+            $value = $ticket[$field] ?? null;
+            if ($value === null || $value === '' || (int)$value <= 0) {
+                $ticket[$field] = null;
+                continue;
+            }
+            if (($field === 'assigned_admin_id' && !isset($existingUserIds[(int)$value])) ||
+                ($field === 'project_id' && !isset($existingProjectIds[(int)$value])) ||
+                ($field === 'task_id' && !isset($existingTaskIds[(int)$value]))) {
+                $ticket[$field] = null;
+            } else {
+                $ticket[$field] = (int)$value;
+            }
+        }
+    }
+    unset($ticket);
+
+    $existingSupportTicketIds = [];
+    foreach ($data['support_tickets'] ?? [] as $ticket) {
+        $ticketId = (int)($ticket['id'] ?? 0);
+        if ($ticketId > 0) {
+            $existingSupportTicketIds[$ticketId] = true;
+        }
+    }
+
+    $data['support_ticket_comments'] = array_values(array_filter($data['support_ticket_comments'] ?? [], static function ($comment) use ($existingSupportTicketIds, $existingUserIds): bool {
+        return isset($existingSupportTicketIds[(int)($comment['ticket_id'] ?? 0)], $existingUserIds[(int)($comment['user_id'] ?? 0)]);
+    }));
+
     $pdo->beginTransaction();
 
     try {
         // Kindtabellen zuerst löschen, damit Foreign Keys nicht blockieren.
-        foreach (['history', 'events', 'time_entries', 'comments', 'tasks', 'kanban_columns', 'boards', 'project_members', 'projects', 'users'] as $table) {
+        foreach (['support_ticket_comments', 'support_tickets', 'pm_pinboard_reads', 'pm_message_reads', 'pm_pinboard', 'pm_messages', 'invoice_items', 'eur_entries', 'invoices', 'history', 'events', 'time_entries', 'comments', 'tasks', 'kanban_columns', 'boards', 'project_members', 'projects', 'users'] as $table) {
             $pdo->exec("DELETE FROM {$table}");
         }
 
@@ -1626,6 +2081,188 @@ function storage_save_db(PDO $pdo, array $data): void
                 ':new_value' => $h['new_value'] ?? null,
                 ':message' => $h['message'] ?? null,
                 ':created_at' => $h['created_at'] ?? null,
+            ]);
+        }
+
+        // Rechnungen speichern.
+        $stmt = $pdo->prepare('INSERT INTO invoices (id, number, customer_id, customer_name, project_id, project_name, title, invoice_date, due_date, status, net_amount, vat_rate, vat_amount, gross_amount, paid_at, notes, created_by, created_at, updated_at)
+            VALUES (:id, :number, :customer_id, :customer_name, :project_id, :project_name, :title, :invoice_date, :due_date, :status, :net_amount, :vat_rate, :vat_amount, :gross_amount, :paid_at, :notes, :created_by, :created_at, :updated_at)');
+        foreach ($data['invoices'] ?? [] as $invoice) {
+            $stmt->execute([
+                ':id' => (int)$invoice['id'],
+                ':number' => $invoice['number'] ?? '',
+                ':customer_id' => ($invoice['customer_id'] ?? null) === '' ? null : ($invoice['customer_id'] ?? null),
+                ':customer_name' => $invoice['customer_name'] ?? null,
+                ':project_id' => ($invoice['project_id'] ?? null) === '' ? null : ($invoice['project_id'] ?? null),
+                ':project_name' => $invoice['project_name'] ?? null,
+                ':title' => $invoice['title'] ?? null,
+                ':invoice_date' => $invoice['invoice_date'] ?? null,
+                ':due_date' => $invoice['due_date'] ?? null,
+                ':status' => in_array(($invoice['status'] ?? 'draft'), ['draft', 'sent', 'paid', 'cancelled'], true) ? $invoice['status'] : 'draft',
+                ':net_amount' => (float)($invoice['net_amount'] ?? 0),
+                ':vat_rate' => (float)($invoice['vat_rate'] ?? 19),
+                ':vat_amount' => (float)($invoice['vat_amount'] ?? 0),
+                ':gross_amount' => (float)($invoice['gross_amount'] ?? 0),
+                ':paid_at' => $invoice['paid_at'] ?? null,
+                ':notes' => $invoice['notes'] ?? null,
+                ':created_by' => ($invoice['created_by'] ?? null) === '' ? null : ($invoice['created_by'] ?? null),
+                ':created_at' => $invoice['created_at'] ?? null,
+                ':updated_at' => $invoice['updated_at'] ?? null,
+            ]);
+        }
+
+        // Rechnungspositionen speichern.
+        $stmt = $pdo->prepare('INSERT INTO invoice_items (id, invoice_id, position, time_entry_id, task_id, task_title, user_id, user_name, project_id, project_name, work_date, description, quantity_hours, unit_price, net_amount)
+            VALUES (:id, :invoice_id, :position, :time_entry_id, :task_id, :task_title, :user_id, :user_name, :project_id, :project_name, :work_date, :description, :quantity_hours, :unit_price, :net_amount)');
+        foreach ($data['invoice_items'] ?? [] as $item) {
+            $invoiceId = (int)($item['invoice_id'] ?? 0);
+            if ($invoiceId <= 0) {
+                continue;
+            }
+
+            $stmt->execute([
+                ':id' => (int)$item['id'],
+                ':invoice_id' => $invoiceId,
+                ':position' => (int)($item['position'] ?? 0),
+                ':time_entry_id' => ($item['time_entry_id'] ?? null) === '' ? null : ($item['time_entry_id'] ?? null),
+                ':task_id' => ($item['task_id'] ?? null) === '' ? null : ($item['task_id'] ?? null),
+                ':task_title' => $item['task_title'] ?? null,
+                ':user_id' => ($item['user_id'] ?? null) === '' ? null : ($item['user_id'] ?? null),
+                ':user_name' => $item['user_name'] ?? null,
+                ':project_id' => ($item['project_id'] ?? null) === '' ? null : ($item['project_id'] ?? null),
+                ':project_name' => $item['project_name'] ?? null,
+                ':work_date' => $item['work_date'] ?? null,
+                ':description' => $item['description'] ?? null,
+                ':quantity_hours' => (float)($item['quantity_hours'] ?? 0),
+                ':unit_price' => (float)($item['unit_price'] ?? 0),
+                ':net_amount' => (float)($item['net_amount'] ?? 0),
+            ]);
+        }
+
+        // Manuelle EÜR-Buchungen speichern.
+        $stmt = $pdo->prepare('INSERT INTO eur_entries (id, entry_date, type, category, description, user_id, user_name, invoice_id, amount_net, vat_rate, vat_amount, amount_gross, created_by, created_at)
+            VALUES (:id, :entry_date, :type, :category, :description, :user_id, :user_name, :invoice_id, :amount_net, :vat_rate, :vat_amount, :amount_gross, :created_by, :created_at)');
+        foreach ($data['eur_entries'] ?? [] as $entry) {
+            $stmt->execute([
+                ':id' => (int)$entry['id'],
+                ':entry_date' => $entry['entry_date'] ?? null,
+                ':type' => in_array(($entry['type'] ?? 'expense'), ['income', 'expense'], true) ? $entry['type'] : 'expense',
+                ':category' => $entry['category'] ?? null,
+                ':description' => $entry['description'] ?? null,
+                ':user_id' => ($entry['user_id'] ?? null) === '' ? null : ($entry['user_id'] ?? null),
+                ':user_name' => $entry['user_name'] ?? null,
+                ':invoice_id' => ($entry['invoice_id'] ?? null) === '' ? null : ($entry['invoice_id'] ?? null),
+                ':amount_net' => (float)($entry['amount_net'] ?? 0),
+                ':vat_rate' => (float)($entry['vat_rate'] ?? 0),
+                ':vat_amount' => (float)($entry['vat_amount'] ?? 0),
+                ':amount_gross' => (float)($entry['amount_gross'] ?? 0),
+                ':created_by' => ($entry['created_by'] ?? null) === '' ? null : ($entry['created_by'] ?? null),
+                ':created_at' => $entry['created_at'] ?? null,
+            ]);
+        }
+
+
+        // PM-Nachrichten speichern.
+        $stmt = $pdo->prepare('INSERT INTO pm_messages (id, type, project_id, sender_id, recipient_id, subject, content, created_at, updated_at)
+            VALUES (:id, :type, :project_id, :sender_id, :recipient_id, :subject, :content, :created_at, :updated_at)');
+        foreach ($data['pm_messages'] ?? [] as $message) {
+            $type = in_array(($message['type'] ?? 'direct'), ['direct', 'project', 'company'], true) ? $message['type'] : 'direct';
+            $stmt->execute([
+                ':id' => (int)$message['id'],
+                ':type' => $type,
+                ':project_id' => ($message['project_id'] ?? null) === '' ? null : ($message['project_id'] ?? null),
+                ':sender_id' => (int)$message['sender_id'],
+                ':recipient_id' => ($message['recipient_id'] ?? null) === '' ? null : ($message['recipient_id'] ?? null),
+                ':subject' => $message['subject'] ?? null,
+                ':content' => $message['content'] ?? '',
+                ':created_at' => $message['created_at'] ?? null,
+                ':updated_at' => $message['updated_at'] ?? null,
+            ]);
+        }
+
+        // PM-Lesestände speichern.
+        $stmt = $pdo->prepare('INSERT INTO pm_message_reads (id, message_id, user_id, read_at)
+            VALUES (:id, :message_id, :user_id, :read_at)');
+        foreach ($data['pm_message_reads'] ?? [] as $read) {
+            $stmt->execute([
+                ':id' => (int)$read['id'],
+                ':message_id' => (int)$read['message_id'],
+                ':user_id' => (int)$read['user_id'],
+                ':read_at' => $read['read_at'] ?? null,
+            ]);
+        }
+
+        // Admin-Pinnwand speichern.
+        $stmt = $pdo->prepare('INSERT INTO pm_pinboard (id, title, content, priority, is_active, expires_at, created_by, created_at, updated_at)
+            VALUES (:id, :title, :content, :priority, :is_active, :expires_at, :created_by, :created_at, :updated_at)');
+        foreach ($data['pm_pinboard'] ?? [] as $pin) {
+            $priority = in_array(($pin['priority'] ?? 'normal'), ['normal', 'important', 'urgent'], true) ? $pin['priority'] : 'normal';
+            $stmt->execute([
+                ':id' => (int)$pin['id'],
+                ':title' => $pin['title'] ?? '',
+                ':content' => $pin['content'] ?? '',
+                ':priority' => $priority,
+                ':is_active' => empty($pin['is_active']) ? 0 : 1,
+                ':expires_at' => $pin['expires_at'] ?? null,
+                ':created_by' => (int)$pin['created_by'],
+                ':created_at' => $pin['created_at'] ?? null,
+                ':updated_at' => $pin['updated_at'] ?? null,
+            ]);
+        }
+
+        // Pinnwand-Lesestände speichern.
+        $stmt = $pdo->prepare('INSERT INTO pm_pinboard_reads (id, pin_id, user_id, read_at)
+            VALUES (:id, :pin_id, :user_id, :read_at)');
+        foreach ($data['pm_pinboard_reads'] ?? [] as $read) {
+            $stmt->execute([
+                ':id' => (int)$read['id'],
+                ':pin_id' => (int)$read['pin_id'],
+                ':user_id' => (int)$read['user_id'],
+                ':read_at' => $read['read_at'] ?? null,
+            ]);
+        }
+
+
+        // Support-/Ticketsystem speichern.
+        $stmt = $pdo->prepare('INSERT INTO support_tickets (id, ticket_number, created_by, assigned_admin_id, project_id, task_id, area, priority, status, title, expected_result, actual_result, steps, admin_note, created_at, updated_at, accepted_at, resolved_at, confirmed_at)
+            VALUES (:id, :ticket_number, :created_by, :assigned_admin_id, :project_id, :task_id, :area, :priority, :status, :title, :expected_result, :actual_result, :steps, :admin_note, :created_at, :updated_at, :accepted_at, :resolved_at, :confirmed_at)');
+        foreach ($data['support_tickets'] ?? [] as $ticket) {
+            $priority = in_array(($ticket['priority'] ?? 'normal'), ['low', 'normal', 'high', 'critical'], true) ? $ticket['priority'] : 'normal';
+            $status = in_array(($ticket['status'] ?? 'new'), ['new', 'accepted', 'in_progress', 'waiting', 'done', 'confirmed', 'rejected'], true) ? $ticket['status'] : 'new';
+            $stmt->execute([
+                ':id' => (int)$ticket['id'],
+                ':ticket_number' => $ticket['ticket_number'] ?? ('PN-' . (int)$ticket['id']),
+                ':created_by' => (int)$ticket['created_by'],
+                ':assigned_admin_id' => ($ticket['assigned_admin_id'] ?? null) === '' ? null : ($ticket['assigned_admin_id'] ?? null),
+                ':project_id' => ($ticket['project_id'] ?? null) === '' ? null : ($ticket['project_id'] ?? null),
+                ':task_id' => ($ticket['task_id'] ?? null) === '' ? null : ($ticket['task_id'] ?? null),
+                ':area' => $ticket['area'] ?? 'other',
+                ':priority' => $priority,
+                ':status' => $status,
+                ':title' => $ticket['title'] ?? '',
+                ':expected_result' => $ticket['expected_result'] ?? null,
+                ':actual_result' => $ticket['actual_result'] ?? null,
+                ':steps' => $ticket['steps'] ?? null,
+                ':admin_note' => $ticket['admin_note'] ?? null,
+                ':created_at' => $ticket['created_at'] ?? null,
+                ':updated_at' => $ticket['updated_at'] ?? null,
+                ':accepted_at' => $ticket['accepted_at'] ?? null,
+                ':resolved_at' => $ticket['resolved_at'] ?? null,
+                ':confirmed_at' => $ticket['confirmed_at'] ?? null,
+            ]);
+        }
+
+        $stmt = $pdo->prepare('INSERT INTO support_ticket_comments (id, ticket_id, user_id, visibility, content, created_at)
+            VALUES (:id, :ticket_id, :user_id, :visibility, :content, :created_at)');
+        foreach ($data['support_ticket_comments'] ?? [] as $comment) {
+            $visibility = in_array(($comment['visibility'] ?? 'public'), ['public', 'admin'], true) ? $comment['visibility'] : 'public';
+            $stmt->execute([
+                ':id' => (int)$comment['id'],
+                ':ticket_id' => (int)$comment['ticket_id'],
+                ':user_id' => (int)$comment['user_id'],
+                ':visibility' => $visibility,
+                ':content' => $comment['content'] ?? '',
+                ':created_at' => $comment['created_at'] ?? null,
             ]);
         }
 

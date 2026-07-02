@@ -68,6 +68,9 @@ if (!$user) {
 
     <nav>
         <a class="ghost" href="index.php">Kanban öffnen</a>
+        <a class="ghost" href="accounting.php">Rechnungen/EÜR</a>
+        <a class="ghost" href="pm.php">Nachrichten</a>
+        <a class="ghost" href="tickets.php">Tickets</a>
         <a href="logout.php">Logout (<?= htmlspecialchars($user['username']) ?>)</a>
     </nav>
 </header>

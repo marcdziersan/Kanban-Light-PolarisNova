@@ -59,6 +59,11 @@ $data = storage_load();
     <p><b>Benutzer:</b> <?= count($data['users'] ?? []) ?></p>
     <p><b>Aufgaben:</b> <?= count($data['tasks'] ?? []) ?></p>
     <p><b>Historie:</b> <?= count($data['history'] ?? []) ?></p>
+    <p><b>Rechnungen:</b> <?= count($data['invoices'] ?? []) ?></p>
+    <p><b>EÜR-Buchungen:</b> <?= count($data['eur_entries'] ?? []) ?></p>
+    <p><b>PM-Nachrichten:</b> <?= count($data['pm_messages'] ?? []) ?></p>
+    <p><b>Pinnwand:</b> <?= count($data['pm_pinboard'] ?? []) ?></p>
+    <p><b>Support-Tickets:</b> <?= count($data['support_tickets'] ?? []) ?></p>
 
     <h2>Hinweis</h2>
     <p>

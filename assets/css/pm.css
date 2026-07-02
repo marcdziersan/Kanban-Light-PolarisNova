@@ -1,0 +1,205 @@
+/* PolarisNova PM-System */
+.pm-layout {
+    display: grid;
+    grid-template-columns: 310px 1fr;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.pm-sidebar,
+.pm-main {
+    min-width: 0;
+}
+
+.pm-sidebar .panel,
+.pm-main .panel {
+    margin-bottom: 1rem;
+}
+
+.pm-tab {
+    width: 100%;
+    display: block;
+    margin: .35rem 0;
+    text-align: left;
+    justify-content: flex-start;
+}
+
+.pm-tab.active {
+    background: linear-gradient(135deg, rgba(216,177,92,.28), rgba(121,212,255,.16));
+    border-color: rgba(216,177,92,.55);
+    color: #fff;
+}
+
+.pm-headline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.pm-headline h1 {
+    margin-bottom: .25rem;
+}
+
+.pm-headline .actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.pm-form {
+    display: grid;
+    gap: .9rem;
+    max-width: 840px;
+}
+
+.pm-form label {
+    display: grid;
+    gap: .35rem;
+    color: var(--muted, #6b7280);
+    font-weight: 700;
+}
+
+.pm-form textarea {
+    min-height: 140px;
+}
+
+.pm-list {
+    display: grid;
+    gap: .75rem;
+}
+
+.pm-empty {
+    border: 1px dashed rgba(148, 163, 184, .55);
+    border-radius: 16px;
+    padding: 1rem;
+    color: var(--muted, #64748b);
+    background: rgba(255,255,255,.035);
+}
+
+.pm-card {
+    border: 1px solid rgba(148, 163, 184, .25);
+    border-radius: 18px;
+    padding: 1rem;
+    background: rgba(255,255,255,.055);
+    box-shadow: 0 10px 34px rgba(15, 23, 42, .08);
+}
+
+.pm-card.unread {
+    border-color: rgba(216,177,92,.7);
+    background: linear-gradient(135deg, rgba(216,177,92,.16), rgba(255,255,255,.06));
+}
+
+.pm-card.urgent {
+    border-color: rgba(239,68,68,.65);
+    background: linear-gradient(135deg, rgba(239,68,68,.14), rgba(255,255,255,.06));
+}
+
+.pm-card.important {
+    border-color: rgba(245,158,11,.65);
+    background: linear-gradient(135deg, rgba(245,158,11,.14), rgba(255,255,255,.06));
+}
+
+.pm-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .55rem;
+}
+
+.pm-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .25rem;
+}
+
+.pm-title strong {
+    font-size: 1.04rem;
+}
+
+.pm-meta {
+    color: var(--muted, #64748b);
+    font-size: .9rem;
+    line-height: 1.45;
+}
+
+.pm-content {
+    white-space: pre-wrap;
+    line-height: 1.62;
+    margin-top: .65rem;
+}
+
+.pm-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    justify-content: flex-end;
+}
+
+.pm-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .18rem .5rem;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 800;
+    background: rgba(148,163,184,.16);
+    color: inherit;
+    border: 1px solid rgba(148,163,184,.22);
+}
+
+.pm-badge.direct { background: rgba(121,212,255,.16); border-color: rgba(121,212,255,.3); }
+.pm-badge.project { background: rgba(119,226,165,.16); border-color: rgba(119,226,165,.3); }
+.pm-badge.company { background: rgba(216,177,92,.16); border-color: rgba(216,177,92,.3); }
+.pm-badge.unread { background: rgba(216,177,92,.22); border-color: rgba(216,177,92,.5); }
+.pm-badge.normal { background: rgba(148,163,184,.16); }
+.pm-badge.important { background: rgba(245,158,11,.18); border-color: rgba(245,158,11,.45); }
+.pm-badge.urgent { background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.45); }
+
+.pm-sidebar label {
+    display: grid;
+    gap: .35rem;
+    margin-bottom: .7rem;
+    font-weight: 700;
+}
+
+@media print {
+    .topbar,
+    .pm-sidebar,
+    .pm-headline .actions,
+    .pm-card-actions,
+    .pm-form {
+        display: none !important;
+    }
+
+    .pm-layout {
+        display: block;
+        padding: 0;
+    }
+
+    .pm-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border-color: #bbb;
+    }
+}
+
+@media (max-width: 900px) {
+    .pm-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .pm-headline {
+        flex-direction: column;
+    }
+
+    .pm-headline .actions {
+        justify-content: flex-start;
+    }
+}
