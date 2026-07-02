@@ -18,7 +18,7 @@
             "password_hash": "$2y$10$NjLbet8SaYZrFBjNnL1iQOSHDU8AT7soJRedklAthx8HdSfPBXQoi",
             "role": "admin",
             "is_active": true,
-            "created_at": "2026-07-01 00:00:00"
+            "created_at": "2026-07-01 09:00:00"
         },
         {
             "id": 2,
@@ -27,17 +27,33 @@
             "password_hash": "$2y$10$XLt0moOZTbXyo7oAdyosvuwm8XrP6jhGnfYCALN.wP15M5NWMu1LG",
             "role": "user",
             "is_active": true,
-            "created_at": "2026-07-01 00:00:00"
+            "created_at": "2026-07-01 09:05:00"
         }
     ],
     "projects": [
         {
             "id": 1,
             "name": "polarisnova.de",
-            "description": "",
+            "description": "Relaunch einer kleinen Agentur-Website inklusive Kundenbereich, Startseite, Kontaktformular und technischer Grundstruktur.",
+            "owner_id": 1,
+            "responsible_id": 2,
+            "created_at": "2026-07-01 09:15:00"
+        },
+        {
+            "id": 2,
+            "name": "Interne Organisation",
+            "description": "Internes Board für Aufgaben rund um Dokumentation, Installation, GitHub-Veröffentlichung und Übergabe.",
             "owner_id": 1,
             "responsible_id": 1,
-            "created_at": "2026-07-01 14:22:32"
+            "created_at": "2026-07-01 09:20:00"
+        },
+        {
+            "id": 3,
+            "name": "Kundenportal MVP",
+            "description": "Konzept und erster Prototyp für ein schlankes Kundenportal mit Login, Tickets und Statusübersicht.",
+            "owner_id": 1,
+            "responsible_id": 2,
+            "created_at": "2026-07-01 09:25:00"
         }
     ],
     "boards": [
@@ -45,14 +61,54 @@
             "id": 1,
             "project_id": 1,
             "name": "Web Agency"
+        },
+        {
+            "id": 2,
+            "project_id": 2,
+            "name": "Organisation"
+        },
+        {
+            "id": 3,
+            "project_id": 3,
+            "name": "Portal MVP"
         }
     ],
     "project_members": [
         {
             "id": 1,
             "project_id": 1,
+            "user_id": 1,
+            "created_at": "2026-07-01 09:16:00"
+        },
+        {
+            "id": 2,
+            "project_id": 1,
             "user_id": 2,
-            "created_at": "2026-07-01 14:22:32"
+            "created_at": "2026-07-01 09:16:00"
+        },
+        {
+            "id": 3,
+            "project_id": 2,
+            "user_id": 1,
+            "created_at": "2026-07-01 09:21:00"
+        },
+        {
+            "id": 4,
+            "project_id": 2,
+            "user_id": 2,
+            "created_at": "2026-07-01 09:21:00"
+        },
+        {
+            "id": 5,
+            "project_id": 3,
+            "user_id": 1,
+            "created_at": "2026-07-01 09:26:00"
+        },
+        {
+            "id": 6,
+            "project_id": 3,
+            "user_id": 2,
+            "created_at": "2026-07-01 09:26:00"
         }
     ],
     "columns": [
@@ -63,8 +119,32 @@
             "position": 1
         },
         {
+            "id": 5,
+            "board_id": 2,
+            "name": "Offen",
+            "position": 1
+        },
+        {
+            "id": 9,
+            "board_id": 3,
+            "name": "Offen",
+            "position": 1
+        },
+        {
             "id": 2,
             "board_id": 1,
+            "name": "In Arbeit",
+            "position": 2
+        },
+        {
+            "id": 6,
+            "board_id": 2,
+            "name": "In Arbeit",
+            "position": 2
+        },
+        {
+            "id": 10,
+            "board_id": 3,
             "name": "In Arbeit",
             "position": 2
         },
@@ -75,24 +155,630 @@
             "position": 3
         },
         {
+            "id": 7,
+            "board_id": 2,
+            "name": "Review",
+            "position": 3
+        },
+        {
+            "id": 11,
+            "board_id": 3,
+            "name": "Review",
+            "position": 3
+        },
+        {
             "id": 4,
             "board_id": 1,
             "name": "Erledigt",
             "position": 4
+        },
+        {
+            "id": 8,
+            "board_id": 2,
+            "name": "Erledigt",
+            "position": 4
+        },
+        {
+            "id": 12,
+            "board_id": 3,
+            "name": "Erledigt",
+            "position": 4
         }
     ],
-    "tasks": [],
-    "comments": [],
-    "time_entries": [],
+    "tasks": [
+        {
+            "id": 1,
+            "column_id": 1,
+            "title": "Startseiten-Texte strukturieren",
+            "description": "Hero-Bereich, Nutzenversprechen und klare Call-to-Actions für die Startseite ausarbeiten.",
+            "priority": "high",
+            "assigned_to": 2,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-05 17:00:00",
+            "created_at": "2026-07-01 10:00:00",
+            "updated_at": "2026-07-01 10:00:00"
+        },
+        {
+            "id": 2,
+            "column_id": 2,
+            "title": "Responsive Navigation einbauen",
+            "description": "Mobile-first Navigation mit Hamburger-Menü, aktiven Links und stabiler Desktop-Darstellung.",
+            "priority": "medium",
+            "assigned_to": 2,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-04 18:00:00",
+            "created_at": "2026-07-01 10:10:00",
+            "updated_at": "2026-07-01 11:00:00"
+        },
+        {
+            "id": 3,
+            "column_id": 3,
+            "title": "Kontaktformular prüfen",
+            "description": "Validierung, Fehlermeldungen und Sendebestätigung fachlich und technisch testen.",
+            "priority": "critical",
+            "assigned_to": 1,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-03 16:00:00",
+            "created_at": "2026-07-01 10:20:00",
+            "updated_at": "2026-07-01 12:00:00"
+        },
+        {
+            "id": 4,
+            "column_id": 4,
+            "title": "Impressum und Datenschutz ergänzen",
+            "description": "Pflichtseiten mit Platzhaltern anlegen und im Footer verlinken.",
+            "priority": "low",
+            "assigned_to": 1,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-02 12:00:00",
+            "created_at": "2026-07-01 10:30:00",
+            "updated_at": "2026-07-01 13:00:00"
+        },
+        {
+            "id": 5,
+            "column_id": 5,
+            "title": "README für GitHub finalisieren",
+            "description": "Projektbeschreibung, Installationsschritte, Demo-Login und Lizenzhinweise dokumentieren.",
+            "priority": "high",
+            "assigned_to": 1,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-06 12:00:00",
+            "created_at": "2026-07-01 10:40:00",
+            "updated_at": "2026-07-01 10:40:00"
+        },
+        {
+            "id": 6,
+            "column_id": 6,
+            "title": "Technische Dokumentation gegenlesen",
+            "description": "Architektur, API, Datenbankmodell und Erweiterungspunkte auf Vollständigkeit prüfen.",
+            "priority": "medium",
+            "assigned_to": 2,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-07 12:00:00",
+            "created_at": "2026-07-01 10:50:00",
+            "updated_at": "2026-07-01 11:40:00"
+        },
+        {
+            "id": 7,
+            "column_id": 8,
+            "title": "Installationsanleitung erstellen",
+            "description": "config.php, setup_status.php und index.php als einfachen Installationsweg dokumentieren.",
+            "priority": "medium",
+            "assigned_to": 1,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-01 18:00:00",
+            "created_at": "2026-07-01 11:00:00",
+            "updated_at": "2026-07-01 14:00:00"
+        },
+        {
+            "id": 8,
+            "column_id": 9,
+            "title": "Login-Maske für Kundenportal planen",
+            "description": "Felder, Fehlermeldungen, Session-Verhalten und Weiterleitung nach Login definieren.",
+            "priority": "high",
+            "assigned_to": 2,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-08 16:00:00",
+            "created_at": "2026-07-01 11:10:00",
+            "updated_at": "2026-07-01 11:10:00"
+        },
+        {
+            "id": 9,
+            "column_id": 10,
+            "title": "Ticketübersicht prototypisch bauen",
+            "description": "Liste mit Status, Priorität, Kunde, Fälligkeit und Detailansicht vorbereiten.",
+            "priority": "critical",
+            "assigned_to": 2,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-09 16:00:00",
+            "created_at": "2026-07-01 11:20:00",
+            "updated_at": "2026-07-01 12:15:00"
+        },
+        {
+            "id": 10,
+            "column_id": 11,
+            "title": "Statusfarben fachlich prüfen",
+            "description": "Statuslogik für offen, in Arbeit, wartend, erledigt und archiviert mit UI abgleichen.",
+            "priority": "medium",
+            "assigned_to": 1,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-10 16:00:00",
+            "created_at": "2026-07-01 11:30:00",
+            "updated_at": "2026-07-01 12:30:00"
+        },
+        {
+            "id": 11,
+            "column_id": 12,
+            "title": "Grundlayout Kundenportal abschließen",
+            "description": "Basislayout mit Header, Sidebar, Contentbereich und leerem Dashboard fertigstellen.",
+            "priority": "low",
+            "assigned_to": 1,
+            "position": 1,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-05 12:00:00",
+            "created_at": "2026-07-01 11:40:00",
+            "updated_at": "2026-07-01 13:30:00"
+        },
+        {
+            "id": 12,
+            "column_id": 2,
+            "title": "Bildmaterial austauschen",
+            "description": "Platzhalterbilder durch neutrale Projektgrafiken ersetzen und Alt-Texte ergänzen.",
+            "priority": "low",
+            "assigned_to": null,
+            "position": 2,
+            "locked_by": null,
+            "locked_at": null,
+            "due_at": "2026-07-11 12:00:00",
+            "created_at": "2026-07-01 11:50:00",
+            "updated_at": "2026-07-01 11:50:00"
+        }
+    ],
+    "comments": [
+        {
+            "id": 1,
+            "task_id": 1,
+            "user_id": 1,
+            "content": "Bitte den Nutzen für kleine Unternehmen klarer herausstellen. Nicht nur Technik erklären.",
+            "created_at": "2026-07-01 10:35:00"
+        },
+        {
+            "id": 2,
+            "task_id": 1,
+            "user_id": 2,
+            "content": "Ich ergänze einen Abschnitt zu schneller Einrichtung und persönlicher Betreuung.",
+            "created_at": "2026-07-01 10:45:00"
+        },
+        {
+            "id": 3,
+            "task_id": 2,
+            "user_id": 2,
+            "content": "Navigation ist eingebaut. Desktop passt, mobile Abstände prüfe ich noch.",
+            "created_at": "2026-07-01 11:05:00"
+        },
+        {
+            "id": 4,
+            "task_id": 3,
+            "user_id": 1,
+            "content": "Fehlertexte bitte nicht technisch, sondern kundenfreundlich formulieren.",
+            "created_at": "2026-07-01 12:05:00"
+        },
+        {
+            "id": 5,
+            "task_id": 5,
+            "user_id": 1,
+            "content": "Lizenzhinweis muss deutlich sichtbar bleiben.",
+            "created_at": "2026-07-01 11:15:00"
+        },
+        {
+            "id": 6,
+            "task_id": 6,
+            "user_id": 2,
+            "content": "API-Abschnitt ist fast fertig, Datenbankmodell fehlt noch als Kurzreferenz.",
+            "created_at": "2026-07-01 12:10:00"
+        },
+        {
+            "id": 7,
+            "task_id": 8,
+            "user_id": 1,
+            "content": "Bitte Login zuerst einfach halten, später Rollen erweitern.",
+            "created_at": "2026-07-01 12:20:00"
+        },
+        {
+            "id": 8,
+            "task_id": 9,
+            "user_id": 2,
+            "content": "Ticketliste steht als Rohfassung. Filter kommen danach.",
+            "created_at": "2026-07-01 12:45:00"
+        },
+        {
+            "id": 9,
+            "task_id": 10,
+            "user_id": 1,
+            "content": "Statusfarben sind nachvollziehbar, bitte Kontrast auf mobilen Geräten prüfen.",
+            "created_at": "2026-07-01 13:00:00"
+        },
+        {
+            "id": 10,
+            "task_id": 12,
+            "user_id": 2,
+            "content": "Ich suche neutrale Grafiken, damit keine externen Rechte im Demo-Projekt hängen.",
+            "created_at": "2026-07-01 13:15:00"
+        }
+    ],
+    "time_entries": [
+        {
+            "id": 1,
+            "task_id": 1,
+            "user_id": 2,
+            "started_at": "2026-07-01 10:00:00",
+            "stopped_at": "2026-07-01 10:45:00",
+            "seconds": 2700
+        },
+        {
+            "id": 2,
+            "task_id": 2,
+            "user_id": 2,
+            "started_at": "2026-07-01 10:50:00",
+            "stopped_at": "2026-07-01 11:35:00",
+            "seconds": 2700
+        },
+        {
+            "id": 3,
+            "task_id": 3,
+            "user_id": 1,
+            "started_at": "2026-07-01 11:30:00",
+            "stopped_at": "2026-07-01 12:15:00",
+            "seconds": 2700
+        },
+        {
+            "id": 4,
+            "task_id": 4,
+            "user_id": 1,
+            "started_at": "2026-07-01 12:20:00",
+            "stopped_at": "2026-07-01 12:50:00",
+            "seconds": 1800
+        },
+        {
+            "id": 5,
+            "task_id": 5,
+            "user_id": 1,
+            "started_at": "2026-07-01 13:00:00",
+            "stopped_at": "2026-07-01 13:40:00",
+            "seconds": 2400
+        },
+        {
+            "id": 6,
+            "task_id": 6,
+            "user_id": 2,
+            "started_at": "2026-07-01 13:10:00",
+            "stopped_at": "2026-07-01 14:05:00",
+            "seconds": 3300
+        },
+        {
+            "id": 7,
+            "task_id": 7,
+            "user_id": 1,
+            "started_at": "2026-07-01 14:10:00",
+            "stopped_at": "2026-07-01 14:45:00",
+            "seconds": 2100
+        },
+        {
+            "id": 8,
+            "task_id": 8,
+            "user_id": 2,
+            "started_at": "2026-07-01 14:30:00",
+            "stopped_at": "2026-07-01 15:05:00",
+            "seconds": 2100
+        },
+        {
+            "id": 9,
+            "task_id": 9,
+            "user_id": 2,
+            "started_at": "2026-07-01 15:10:00",
+            "stopped_at": "2026-07-01 16:25:00",
+            "seconds": 4500
+        },
+        {
+            "id": 10,
+            "task_id": 10,
+            "user_id": 1,
+            "started_at": "2026-07-01 15:30:00",
+            "stopped_at": "2026-07-01 16:00:00",
+            "seconds": 1800
+        },
+        {
+            "id": 11,
+            "task_id": 11,
+            "user_id": 1,
+            "started_at": "2026-07-01 16:05:00",
+            "stopped_at": "2026-07-01 16:40:00",
+            "seconds": 2100
+        },
+        {
+            "id": 12,
+            "task_id": 12,
+            "user_id": 2,
+            "started_at": "2026-07-01 16:10:00",
+            "stopped_at": "2026-07-01 16:35:00",
+            "seconds": 1500
+        }
+    ],
     "events": [
         {
             "id": 1,
+            "task_id": 1,
+            "user_id": 1,
+            "type": "task_created",
+            "message": "Aufgabe erstellt: Startseiten-Texte strukturieren",
+            "created_at": "2026-07-01 10:00:00"
+        },
+        {
+            "id": 2,
+            "task_id": 2,
+            "user_id": 2,
+            "type": "task_created",
+            "message": "Aufgabe erstellt: Responsive Navigation einbauen",
+            "created_at": "2026-07-01 10:10:00"
+        },
+        {
+            "id": 3,
+            "task_id": 3,
+            "user_id": 1,
+            "type": "task_created",
+            "message": "Aufgabe erstellt: Kontaktformular prüfen",
+            "created_at": "2026-07-01 10:20:00"
+        },
+        {
+            "id": 4,
+            "task_id": 4,
+            "user_id": 1,
+            "type": "task_done",
+            "message": "Aufgabe abgeschlossen: Impressum und Datenschutz ergänzen",
+            "created_at": "2026-07-01 13:00:00"
+        },
+        {
+            "id": 5,
+            "task_id": 5,
+            "user_id": 1,
+            "type": "task_created",
+            "message": "Aufgabe erstellt: README für GitHub finalisieren",
+            "created_at": "2026-07-01 10:40:00"
+        },
+        {
+            "id": 6,
+            "task_id": 6,
+            "user_id": 2,
+            "type": "task_updated",
+            "message": "Aufgabe aktualisiert: Technische Dokumentation gegenlesen",
+            "created_at": "2026-07-01 11:40:00"
+        },
+        {
+            "id": 7,
+            "task_id": 7,
+            "user_id": 1,
+            "type": "task_done",
+            "message": "Aufgabe abgeschlossen: Installationsanleitung erstellen",
+            "created_at": "2026-07-01 14:00:00"
+        },
+        {
+            "id": 8,
+            "task_id": 8,
+            "user_id": 2,
+            "type": "task_created",
+            "message": "Aufgabe erstellt: Login-Maske für Kundenportal planen",
+            "created_at": "2026-07-01 11:10:00"
+        },
+        {
+            "id": 9,
+            "task_id": 9,
+            "user_id": 2,
+            "type": "task_updated",
+            "message": "Aufgabe aktualisiert: Ticketübersicht prototypisch bauen",
+            "created_at": "2026-07-01 12:15:00"
+        },
+        {
+            "id": 10,
+            "task_id": 10,
+            "user_id": 1,
+            "type": "task_review",
+            "message": "Aufgabe in Review verschoben: Statusfarben fachlich prüfen",
+            "created_at": "2026-07-01 12:30:00"
+        },
+        {
+            "id": 11,
+            "task_id": 11,
+            "user_id": 1,
+            "type": "task_done",
+            "message": "Aufgabe abgeschlossen: Grundlayout Kundenportal abschließen",
+            "created_at": "2026-07-01 13:30:00"
+        },
+        {
+            "id": 12,
+            "task_id": 12,
+            "user_id": 2,
+            "type": "task_created",
+            "message": "Aufgabe erstellt: Bildmaterial austauschen",
+            "created_at": "2026-07-01 11:50:00"
+        },
+        {
+            "id": 13,
             "task_id": null,
             "user_id": 1,
-            "type": "task_deleted",
-            "message": "Aufgabe gelöscht: Demo (#1)",
-            "created_at": "2026-07-01 14:28:46"
+            "type": "project_created",
+            "message": "Projekt erstellt: polarisnova.de",
+            "created_at": "2026-07-01 09:15:00"
+        },
+        {
+            "id": 14,
+            "task_id": null,
+            "user_id": 1,
+            "type": "project_created",
+            "message": "Projekt erstellt: Interne Organisation",
+            "created_at": "2026-07-01 09:20:00"
+        },
+        {
+            "id": 15,
+            "task_id": null,
+            "user_id": 1,
+            "type": "project_created",
+            "message": "Projekt erstellt: Kundenportal MVP",
+            "created_at": "2026-07-01 09:25:00"
         }
     ],
-    "history": []
+    "history": [
+        {
+            "id": 1,
+            "task_id": 1,
+            "user_id": 1,
+            "action": "create",
+            "field": null,
+            "old_value": null,
+            "new_value": null,
+            "message": "Aufgabe wurde angelegt.",
+            "created_at": "2026-07-01 10:00:00"
+        },
+        {
+            "id": 2,
+            "task_id": 1,
+            "user_id": 2,
+            "action": "update",
+            "field": "description",
+            "old_value": "Hero-Bereich definieren.",
+            "new_value": "Hero-Bereich, Nutzenversprechen und klare Call-to-Actions für die Startseite ausarbeiten.",
+            "message": "Beschreibung wurde erweitert.",
+            "created_at": "2026-07-01 10:30:00"
+        },
+        {
+            "id": 3,
+            "task_id": 2,
+            "user_id": 2,
+            "action": "move",
+            "field": "column_id",
+            "old_value": "1",
+            "new_value": "2",
+            "message": "Aufgabe wurde nach In Arbeit verschoben.",
+            "created_at": "2026-07-01 11:00:00"
+        },
+        {
+            "id": 4,
+            "task_id": 3,
+            "user_id": 1,
+            "action": "move",
+            "field": "column_id",
+            "old_value": "2",
+            "new_value": "3",
+            "message": "Aufgabe wurde in Review verschoben.",
+            "created_at": "2026-07-01 12:00:00"
+        },
+        {
+            "id": 5,
+            "task_id": 4,
+            "user_id": 1,
+            "action": "move",
+            "field": "column_id",
+            "old_value": "3",
+            "new_value": "4",
+            "message": "Aufgabe wurde erledigt.",
+            "created_at": "2026-07-01 13:00:00"
+        },
+        {
+            "id": 6,
+            "task_id": 5,
+            "user_id": 1,
+            "action": "create",
+            "field": null,
+            "old_value": null,
+            "new_value": null,
+            "message": "Aufgabe wurde angelegt.",
+            "created_at": "2026-07-01 10:40:00"
+        },
+        {
+            "id": 7,
+            "task_id": 6,
+            "user_id": 2,
+            "action": "update",
+            "field": "priority",
+            "old_value": "low",
+            "new_value": "medium",
+            "message": "Priorität wurde angepasst.",
+            "created_at": "2026-07-01 11:40:00"
+        },
+        {
+            "id": 8,
+            "task_id": 7,
+            "user_id": 1,
+            "action": "move",
+            "field": "column_id",
+            "old_value": "7",
+            "new_value": "8",
+            "message": "Aufgabe wurde erledigt.",
+            "created_at": "2026-07-01 14:00:00"
+        },
+        {
+            "id": 9,
+            "task_id": 8,
+            "user_id": 2,
+            "action": "create",
+            "field": null,
+            "old_value": null,
+            "new_value": null,
+            "message": "Aufgabe wurde angelegt.",
+            "created_at": "2026-07-01 11:10:00"
+        },
+        {
+            "id": 10,
+            "task_id": 9,
+            "user_id": 2,
+            "action": "move",
+            "field": "column_id",
+            "old_value": "9",
+            "new_value": "10",
+            "message": "Aufgabe wurde nach In Arbeit verschoben.",
+            "created_at": "2026-07-01 12:15:00"
+        },
+        {
+            "id": 11,
+            "task_id": 10,
+            "user_id": 1,
+            "action": "move",
+            "field": "column_id",
+            "old_value": "10",
+            "new_value": "11",
+            "message": "Aufgabe wurde in Review verschoben.",
+            "created_at": "2026-07-01 12:30:00"
+        },
+        {
+            "id": 12,
+            "task_id": 11,
+            "user_id": 1,
+            "action": "move",
+            "field": "column_id",
+            "old_value": "11",
+            "new_value": "12",
+            "message": "Aufgabe wurde erledigt.",
+            "created_at": "2026-07-01 13:30:00"
+        }
+    ]
 }

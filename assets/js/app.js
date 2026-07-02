@@ -39,6 +39,7 @@ let taskRefreshTimer = null;
 let taskRefreshBusy = false;
 let lastTaskSnapshot = '';
 let lastMysqlRestorePreview = null;
+let lastMonthlySheet = null;
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -71,6 +72,14 @@ async function request(action, payload = null, options = {}) {
 
   if (options.boardId) {
     params.set('board_id', String(options.boardId));
+  }
+
+  if (options.params && typeof options.params === 'object') {
+    Object.entries(options.params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value));
+      }
+    });
   }
 
   const query = params.toString();
@@ -1103,6 +1112,216 @@ function reportDetailRows(rows) {
     : '<p class="muted">Keine Einzelbuchungen vorhanden.</p>';
 }
 
+function currentMonthValue() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${now.getFullYear()}-${month}`;
+}
+
+function formatDateGerman(value) {
+  if (!value) return '—';
+  const parts = String(value).slice(0, 10).split('-');
+  return parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : String(value);
+}
+
+function weekdayGerman(value) {
+  const date = new Date(String(value).slice(0, 10) + 'T12:00:00');
+  if (Number.isNaN(date.getTime())) return '';
+  return ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][date.getDay()];
+}
+
+function timePart(value) {
+  return value ? String(value).slice(11, 16) : '—';
+}
+
+function timesheetSummaryRows(rows, emptyText = 'Keine Zeiten vorhanden.') {
+  return rows && rows.length
+    ? rows.map(row => `
+      <div class="report-row">
+        <div>
+          <b>${esc(row.label || row.key || '—')}</b><br>
+          <small>${esc(row.entries || 0)} Buchung(en)</small>
+        </div>
+        <strong>${formatSeconds(row.seconds)}</strong>
+      </div>`).join('')
+    : `<p class="muted">${esc(emptyText)}</p>`;
+}
+
+function timesheetTableRows(rows) {
+  return rows && rows.length
+    ? rows.map(row => `
+      <tr class="${row.running ? 'is-running' : ''}">
+        <td>${esc(weekdayGerman(row.day))}<br><small>${esc(formatDateGerman(row.day))}</small></td>
+        <td>${esc(timePart(row.sheet_started_at))}</td>
+        <td>${row.running ? '<b>läuft</b>' : esc(timePart(row.sheet_stopped_at))}</td>
+        <td><strong>${formatSeconds(row.seconds)}</strong></td>
+        <td>${esc(row.project_name)}</td>
+        <td>${esc(row.board_name)}</td>
+        <td>${esc(row.task_title)}<br><small>#${esc(row.task_id)}</small></td>
+      </tr>`).join('')
+    : '<tr><td colspan="7"><p class="muted">Für diesen Mitarbeiter und Monat sind keine Zeiten vorhanden.</p></td></tr>';
+}
+
+function bindMonthlySheetControls() {
+  $('#timesheetLoadBtn')?.addEventListener('click', () => {
+    const month = $('#timesheetMonth')?.value || currentMonthValue();
+    const userId = $('#timesheetUser')?.value || APP_USER.id;
+    loadMonthlySheet(month, userId).catch(error => alert(error.message));
+  });
+
+  $('#timesheetMonth')?.addEventListener('change', () => $('#timesheetLoadBtn')?.click());
+  $('#timesheetUser')?.addEventListener('change', () => $('#timesheetLoadBtn')?.click());
+  $('#timesheetCsvBtn')?.addEventListener('click', exportMonthlySheetCsv);
+  $('#timesheetPrintBtn')?.addEventListener('click', printMonthlySheet);
+}
+
+function renderMonthlySheet(response) {
+  lastMonthlySheet = response;
+
+  const users = response.allowed_users || [];
+  const selectedUserId = Number(response.selected_user_id || APP_USER.id);
+  const userOptions = users.map(user => `
+    <option value="${esc(user.id)}" ${Number(user.id) === selectedUserId ? 'selected' : ''}>
+      ${esc(user.username)}${user.role ? ' · ' + esc(user.role) : ''}${user.is_active ? '' : ' · gesperrt'}
+    </option>`).join('');
+
+  const rows = response.rows || [];
+  const summary = response.summary || {};
+  const runningHint = Number(response.running_count || 0) > 0
+    ? `<p class="timesheet-warning">${esc(response.running_count)} laufende Buchung(en) sind im Monatszettel bis jetzt berechnet.</p>`
+    : '';
+
+  $('#monthlySheet').innerHTML = `
+    <div class="timesheet-head">
+      <div>
+        <h3>Monatszettel</h3>
+        <p class="muted no-margin-left">Mitarbeiter: <b>${esc(response.selected_user_name)}</b> · Monat: <b>${esc(response.month_label || response.month)}</b> · erstellt: ${esc(response.generated_at || '')}</p>
+      </div>
+      <div class="timesheet-actions">
+        <button type="button" id="timesheetCsvBtn">CSV Export</button>
+        <button type="button" id="timesheetPrintBtn">Drucken / PDF</button>
+      </div>
+    </div>
+
+    <div class="timesheet-controls">
+      <label>Monat
+        <input type="month" id="timesheetMonth" value="${esc(response.month || currentMonthValue())}">
+      </label>
+      <label>Mitarbeiter
+        <select id="timesheetUser" ${users.length <= 1 ? 'disabled' : ''}>${userOptions}</select>
+      </label>
+      <button type="button" id="timesheetLoadBtn">Neu laden</button>
+    </div>
+
+    <div class="report-total">Gesamtzeit: <strong>${formatSeconds(response.total_seconds || 0)}</strong> · ${esc(response.entry_count || 0)} Buchung(en)</div>
+    ${runningHint}
+
+    <div class="report-grid timesheet-summary">
+      <section>
+        <h4>Nach Tag</h4>
+        ${timesheetSummaryRows(summary.by_day)}
+      </section>
+      <section>
+        <h4>Nach Projekt</h4>
+        ${timesheetSummaryRows(summary.by_project)}
+      </section>
+      <section>
+        <h4>Nach Aufgabe</h4>
+        ${timesheetSummaryRows(summary.by_task)}
+      </section>
+    </div>
+
+    <div class="timesheet-table-wrap">
+      <table class="timesheet-table">
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Start</th>
+            <th>Ende</th>
+            <th>Dauer</th>
+            <th>Projekt</th>
+            <th>Board</th>
+            <th>Aufgabe</th>
+          </tr>
+        </thead>
+        <tbody>${timesheetTableRows(rows)}</tbody>
+      </table>
+    </div>`;
+
+  bindMonthlySheetControls();
+}
+
+async function loadMonthlySheet(month = currentMonthValue(), userId = APP_USER.id) {
+  const response = await request('monthly_timesheet', null, {
+    params: {
+      month,
+      user_id: userId
+    }
+  });
+
+  renderMonthlySheet(response);
+  openModal('monthlySheetModal');
+}
+
+function csvEscape(value) {
+  const text = String(value ?? '');
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function exportMonthlySheetCsv() {
+  if (!lastMonthlySheet) return;
+
+  const header = ['Datum', 'Wochentag', 'Start', 'Ende', 'Dauer', 'Sekunden', 'Projekt', 'Board', 'Aufgabe', 'Aufgaben-ID'];
+  const lines = [header.map(csvEscape).join(';')];
+
+  (lastMonthlySheet.rows || []).forEach(row => {
+    lines.push([
+      formatDateGerman(row.day),
+      weekdayGerman(row.day),
+      timePart(row.sheet_started_at),
+      row.running ? 'läuft' : timePart(row.sheet_stopped_at),
+      formatSeconds(row.seconds),
+      row.seconds,
+      row.project_name,
+      row.board_name,
+      row.task_title,
+      row.task_id
+    ].map(csvEscape).join(';'));
+  });
+
+  lines.push([]);
+  lines.push(['Gesamt', '', '', '', formatSeconds(lastMonthlySheet.total_seconds || 0), lastMonthlySheet.total_seconds || 0, '', '', '', ''].map(csvEscape).join(';'));
+
+  const blob = new Blob(['\ufeff' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `polarisnova_monatszettel_${lastMonthlySheet.month}_${lastMonthlySheet.selected_user_name || 'mitarbeiter'}.csv`.replace(/[^a-zA-Z0-9_.-]+/g, '_');
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function printMonthlySheet() {
+  if (!lastMonthlySheet) return;
+
+  const sheetHtml = $('#monthlySheet')?.innerHTML || '';
+  const win = window.open('', '_blank', 'width=1100,height=800');
+  if (!win) {
+    alert('Druckfenster konnte nicht geöffnet werden. Bitte Popup-Blocker prüfen.');
+    return;
+  }
+
+  win.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Monatszettel PolarisNova</title>
+    <style>
+      body{font-family:Arial,sans-serif;color:#111827;margin:24px}h3{margin:0 0 8px}.muted{color:#4b5563}.timesheet-controls,.timesheet-actions{display:none}.report-total{margin:12px 0;padding:10px;border:1px solid #d1d5db}.report-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}.report-grid section{border:1px solid #d1d5db;padding:10px;border-radius:8px}.report-row{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:6px 0;gap:12px}.timesheet-warning{border:1px solid #f59e0b;padding:8px}.timesheet-table{width:100%;border-collapse:collapse;font-size:12px}.timesheet-table th,.timesheet-table td{border:1px solid #d1d5db;padding:6px;vertical-align:top}.timesheet-table th{background:#f3f4f6;text-align:left}@media print{body{margin:10mm}.report-grid{break-inside:avoid}.timesheet-table{font-size:11px}}
+    </style></head><body>${sheetHtml}</body></html>`);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
 // -----------------------------------------------------------------------------
 // Projektverwaltung im Adminbereich
 // -----------------------------------------------------------------------------
@@ -1677,6 +1896,15 @@ $('#openReports')?.addEventListener('click', async () => {
       <div id="globalHistoryList">${historyHtml || '<p class="muted">Noch keine Historie vorhanden.</p>'}</div>`;
 
     openModal('reportModal');
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
+
+$('#openMonthlySheet')?.addEventListener('click', async () => {
+  try {
+    await loadMonthlySheet(currentMonthValue(), APP_USER.id);
   } catch (error) {
     alert(error.message);
   }

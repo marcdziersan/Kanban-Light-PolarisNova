@@ -656,3 +656,100 @@ button:disabled{
   color:#111827;
   font-weight:700;
 }
+
+/* -------------------------------------------------------
+   Monatszettel je Mitarbeiter
+   ------------------------------------------------------- */
+.monthly-sheet-card{
+  max-width:min(1180px,96vw);
+}
+.timesheet-head{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+  margin-bottom:12px;
+}
+.timesheet-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-end;
+}
+.timesheet-controls{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  align-items:end;
+  margin:12px 0;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#f8fafc;
+}
+.timesheet-controls label{
+  display:grid;
+  gap:6px;
+  font-weight:700;
+  font-size:13px;
+  color:var(--text);
+}
+.timesheet-warning{
+  margin:10px 0;
+  padding:10px 12px;
+  border:1px solid #f59e0b;
+  border-radius:12px;
+  background:#fffbeb;
+  color:#92400e;
+}
+.timesheet-summary{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.timesheet-table-wrap{
+  margin-top:14px;
+  max-height:56vh;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+}
+.timesheet-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+.timesheet-table th,
+.timesheet-table td{
+  padding:10px 12px;
+  border-bottom:1px solid var(--line);
+  text-align:left;
+  vertical-align:top;
+}
+.timesheet-table th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#eef2ff;
+  color:#111827;
+}
+.timesheet-table td small{
+  color:var(--muted);
+}
+.timesheet-table tr.is-running td{
+  background:#ecfeff;
+}
+@media(max-width:900px){
+  .timesheet-head{
+    flex-direction:column;
+  }
+  .timesheet-actions{
+    justify-content:flex-start;
+  }
+  .timesheet-controls,
+  .timesheet-summary{
+    grid-template-columns:1fr;
+  }
+  .timesheet-table-wrap{
+    max-height:none;
+  }
+}

@@ -147,6 +147,251 @@ final class KanbanApiController
         return ArrayHelper::indexById($a, $id);
     }
     
+
+    /**
+     * Erstellt einen Monatszettel für genau einen Mitarbeiter.
+     *
+     * Admins dürfen jeden Mitarbeiter auswählen. Normale Benutzer erhalten nur
+     * den eigenen Monatszettel. Die Buchungen werden über Aufgabe -> Spalte ->
+     * Board -> Projekt aufgelöst, damit jede Zeile Projekt und Aufgabe enthält.
+     */
+    private function build_monthly_timesheet(array $d, array $u, string $month, int $requestedUserId): array
+    {
+        if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $month = date('Y-m');
+        }
+
+        $monthStart = strtotime($month . '-01 00:00:00');
+        if ($monthStart === false) {
+            $month = date('Y-m');
+            $monthStart = strtotime($month . '-01 00:00:00');
+        }
+
+        $monthEnd = strtotime('+1 month', (int)$monthStart);
+        $now = time();
+
+        $usersById = [];
+        foreach ($d['users'] ?? [] as $userRow) {
+            $uid = (int)($userRow['id'] ?? 0);
+            if ($uid > 0) {
+                $usersById[$uid] = $userRow;
+            }
+        }
+
+        if (($u['role'] ?? '') !== 'admin') {
+            $requestedUserId = (int)($u['id'] ?? 0);
+        } elseif ($requestedUserId <= 0) {
+            $requestedUserId = (int)($u['id'] ?? 0);
+        }
+
+        if ($requestedUserId <= 0 || !isset($usersById[$requestedUserId])) {
+            $this->out(['ok' => false, 'error' => 'Mitarbeiter nicht gefunden'], 404);
+        }
+
+        if (($u['role'] ?? '') !== 'admin' && $requestedUserId !== (int)($u['id'] ?? 0)) {
+            $this->out(['ok' => false, 'error' => 'Nur Admins dürfen fremde Monatszettel sehen'], 403);
+        }
+
+        $projectsById = [];
+        foreach ($d['projects'] ?? [] as $project) {
+            $pid = (int)($project['id'] ?? 0);
+            if ($pid > 0) {
+                $projectsById[$pid] = $project;
+            }
+        }
+
+        $boardsById = [];
+        foreach ($d['boards'] ?? [] as $board) {
+            $bid = (int)($board['id'] ?? 0);
+            if ($bid > 0) {
+                $boardsById[$bid] = $board;
+            }
+        }
+
+        $columnsById = [];
+        foreach ($d['columns'] ?? [] as $column) {
+            $cid = (int)($column['id'] ?? 0);
+            if ($cid > 0) {
+                $columnsById[$cid] = $column;
+            }
+        }
+
+        $tasksById = [];
+        foreach ($d['tasks'] ?? [] as $task) {
+            $tid = (int)($task['id'] ?? 0);
+            if ($tid > 0) {
+                $tasksById[$tid] = $task;
+            }
+        }
+
+        $visibleProjectIds = [];
+        foreach ($projectsById as $projectId => $project) {
+            if ($this->can_access_project($d, $u, (int)$projectId)) {
+                $visibleProjectIds[(int)$projectId] = true;
+            }
+        }
+
+        $allowedUsers = [];
+        if (($u['role'] ?? '') === 'admin') {
+            foreach ($usersById as $uid => $userRow) {
+                if (($userRow['role'] ?? '') !== 'guest') {
+                    $allowedUsers[] = [
+                        'id' => $uid,
+                        'username' => $userRow['username'] ?? ('Benutzer #' . $uid),
+                        'role' => $userRow['role'] ?? 'user',
+                        'is_active' => (bool)($userRow['is_active'] ?? true),
+                    ];
+                }
+            }
+        } else {
+            $allowedUsers[] = [
+                'id' => (int)$u['id'],
+                'username' => $u['username'] ?? ('Benutzer #' . (int)$u['id']),
+                'role' => $u['role'] ?? 'user',
+                'is_active' => (bool)($u['is_active'] ?? true),
+            ];
+        }
+
+        usort($allowedUsers, fn($a, $b) => strcmp((string)$a['username'], (string)$b['username']));
+
+        $rows = [];
+        $byDay = [];
+        $byProject = [];
+        $byTask = [];
+        $totalSeconds = 0;
+        $runningCount = 0;
+
+        $addSummary = static function (&$bucket, string $key, string $label, int $seconds, array $extra = []): void {
+            if (!isset($bucket[$key])) {
+                $bucket[$key] = array_merge([
+                    'key' => $key,
+                    'label' => $label,
+                    'seconds' => 0,
+                    'entries' => 0,
+                ], $extra);
+            }
+
+            $bucket[$key]['seconds'] += $seconds;
+            $bucket[$key]['entries']++;
+        };
+
+        foreach ($d['time_entries'] ?? [] as $entry) {
+            $entryUserId = (int)($entry['user_id'] ?? 0);
+            if ($entryUserId !== $requestedUserId) {
+                continue;
+            }
+
+            $taskId = (int)($entry['task_id'] ?? 0);
+            $task = $tasksById[$taskId] ?? null;
+            if (!$task) {
+                continue;
+            }
+
+            $columnId = (int)($task['column_id'] ?? 0);
+            $column = $columnsById[$columnId] ?? null;
+            if (!$column) {
+                continue;
+            }
+
+            $boardId = (int)($column['board_id'] ?? 0);
+            $board = $boardsById[$boardId] ?? null;
+            if (!$board) {
+                continue;
+            }
+
+            $projectId = (int)($board['project_id'] ?? 0);
+            $project = $projectsById[$projectId] ?? null;
+            if (!$project || !isset($visibleProjectIds[$projectId])) {
+                continue;
+            }
+
+            $startedRaw = (string)($entry['started_at'] ?? '');
+            $startedAt = strtotime($startedRaw);
+            if ($startedAt === false) {
+                continue;
+            }
+
+            $running = empty($entry['stopped_at']);
+            $stoppedRaw = $running ? null : (string)($entry['stopped_at'] ?? '');
+            $stoppedAt = $running ? $now : strtotime((string)$stoppedRaw);
+            if ($stoppedAt === false || $stoppedAt <= $startedAt) {
+                $secondsFallback = (int)($entry['seconds'] ?? 0);
+                $stoppedAt = $startedAt + max(0, $secondsFallback);
+            }
+
+            if ($stoppedAt <= $monthStart || $startedAt >= $monthEnd) {
+                continue;
+            }
+
+            $sheetStart = max($startedAt, (int)$monthStart);
+            $sheetStop = min($stoppedAt, (int)$monthEnd);
+            $seconds = max(0, $sheetStop - $sheetStart);
+            if ($seconds <= 0) {
+                continue;
+            }
+
+            $dayKey = date('Y-m-d', $sheetStart);
+            $projectName = (string)($project['name'] ?? ('Projekt #' . $projectId));
+            $boardName = (string)($board['name'] ?? ('Board #' . $boardId));
+            $taskTitle = (string)($task['title'] ?? ('Aufgabe #' . $taskId));
+
+            $rows[] = [
+                'id' => (int)($entry['id'] ?? 0),
+                'user_id' => $requestedUserId,
+                'user_name' => $usersById[$requestedUserId]['username'] ?? ('Benutzer #' . $requestedUserId),
+                'day' => $dayKey,
+                'started_at' => $startedRaw,
+                'stopped_at' => $stoppedRaw,
+                'sheet_started_at' => date('Y-m-d H:i:s', $sheetStart),
+                'sheet_stopped_at' => date('Y-m-d H:i:s', $sheetStop),
+                'seconds' => $seconds,
+                'running' => $running,
+                'cut_start' => $sheetStart !== $startedAt,
+                'cut_stop' => $sheetStop !== $stoppedAt,
+                'project_id' => $projectId,
+                'project_name' => $projectName,
+                'board_id' => $boardId,
+                'board_name' => $boardName,
+                'task_id' => $taskId,
+                'task_title' => $taskTitle,
+            ];
+
+            $totalSeconds += $seconds;
+            if ($running) {
+                $runningCount++;
+            }
+
+            $addSummary($byDay, $dayKey, date('d.m.Y', $sheetStart), $seconds, ['day' => $dayKey]);
+            $addSummary($byProject, (string)$projectId, $projectName, $seconds, ['project_id' => $projectId, 'project_name' => $projectName]);
+            $addSummary($byTask, (string)$taskId, $taskTitle, $seconds, ['task_id' => $taskId, 'task_title' => $taskTitle, 'project_id' => $projectId, 'project_name' => $projectName]);
+        }
+
+        usort($rows, fn($a, $b) => strcmp((string)$a['sheet_started_at'], (string)$b['sheet_started_at']));
+        $summarySort = static function (array $summary): array {
+            uasort($summary, fn($a, $b) => strcmp((string)$a['label'], (string)$b['label']));
+            return array_values($summary);
+        };
+
+        return [
+            'ok' => true,
+            'month' => $month,
+            'month_label' => date('m.Y', (int)$monthStart),
+            'generated_at' => $this->now(),
+            'selected_user_id' => $requestedUserId,
+            'selected_user_name' => $usersById[$requestedUserId]['username'] ?? ('Benutzer #' . $requestedUserId),
+            'allowed_users' => $allowedUsers,
+            'total_seconds' => $totalSeconds,
+            'entry_count' => count($rows),
+            'running_count' => $runningCount,
+            'rows' => $rows,
+            'summary' => [
+                'by_day' => $summarySort($byDay),
+                'by_project' => $summarySort($byProject),
+                'by_task' => $summarySort($byTask),
+            ],
+        ];
+    }
+
     // -----------------------------------------------------------------------------
     // Projekt-, Board- und Sichtbarkeits-Hilfsfunktionen
     // -----------------------------------------------------------------------------
@@ -1087,6 +1332,13 @@ final class KanbanApiController
             ]);
             break;
     
+        case 'monthly_timesheet':
+            // Monatszettel je Mitarbeiter: einzelne Logzeiten mit Projekt- und Aufgabenbezug.
+            $month = trim((string)($_GET['month'] ?? date('Y-m')));
+            $requestedUserId = (int)($_GET['user_id'] ?? 0);
+            $this->out($this->build_monthly_timesheet($d, $u, $month, $requestedUserId));
+            break;
+
         case 'reports':
             // Erstellt abrechnungsfähige Reportdaten für das aktuell ausgewählte Projektboard.
             // Neben der Aufgaben-Summe werden Buchungen nach Mitarbeiter, Tag, Monat und Jahr

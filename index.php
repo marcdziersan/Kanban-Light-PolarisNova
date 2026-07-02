@@ -101,6 +101,7 @@ if (!$user) {
         <?php endif; ?>
 
         <button class="ghost" type="button" id="openReports" hidden>Reports</button>
+        <button class="ghost" type="button" id="openMonthlySheet">Monatszettel</button>
 
         <a class="ghost" href="customers.php">Kunden</a>
 
@@ -504,6 +505,23 @@ if (!$user) {
         <h2>Reports</h2>
 
         <div id="reports"></div>
+    </section>
+</div>
+
+
+<!-- -----------------------------------------------------------------------
+     Monatszettel-Modal
+     -------------------------------------------------------------------- -->
+<div class="modal" id="monthlySheetModal">
+    <section class="modal-card wide monthly-sheet-card">
+        <button type="button" class="x" data-close>×</button>
+
+        <h2>Monatszettel</h2>
+        <p class="muted no-margin-left">
+            Monatsweise Zeiterfassung pro Mitarbeiter mit Datum, Start, Ende, Dauer, Projekt, Board und Aufgabe.
+        </p>
+
+        <div id="monthlySheet"></div>
     </section>
 </div>
 
